@@ -21,11 +21,11 @@ dudt = @(t,u) k*u;
 
 % Plot
 figure(1)
-plot(t,u,'k','linewidth',3)
+plot(t,u,'k','linewidth',5)
+set(gca, 'fontsize',12)
 title('Exponential Growth','fontsize',20)
 xlabel('time (t)','fontsize',16)
 ylabel('u(t)','fontsize',16)
-set(gca, 'fontsize',10)
 grid on
 grid minor
 
