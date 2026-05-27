@@ -1,0 +1,58 @@
+%% Oscillator
+close all; clear; clc
+
+% Discretize time
+N     = 1e4; 
+t_0   = 0;
+t_end = 50;
+t     = linspace(t_0, t_end, N);
+
+% Parameters
+k = 0.1;
+b = 0;
+m = 1;
+
+% Initial condition
+u0 = 1;
+v0 = 0;
+
+U0 = [u0; v0];
+
+% Right hand side
+dudt = @(t,u,v) v;
+dvdt = @(t,u,v) -b*v - k*u; 
+
+dUdt = @(t,U) [dudt(t,U(1),U(2));
+               dvdt(t,U(1),U(2))];
+
+% Numerically solve the IVP
+[t, U] = ode45(dUdt, t, U0);
+u = U(:,1);
+v = U(:,2);
+
+% Plot
+figure(1)
+plot(t,u,'b','linewidth',5)
+hold on
+plot(t,v,'r','linewidth',5)
+set(gca, 'fontsize',12)
+title('Exponential Growth','fontsize',20)
+xlabel('time (t)','fontsize',16)
+ylabel('u(t)','fontsize',16)
+legend('u(t)', 'v(t)', 'fontsize', 12)
+grid on
+grid minor
+
+% Phase Plane
+N = 30; 
+u_vec = linspace(min(u), max(u), N);
+v_vec = linspace(min(v), max(v), N);
+[Umesh,Vmesh] = meshgrid(u_vec,v_vec);
+
+Norm = sqrt(dudt(0,Umesh,Vmesh).^2 + dvdt(0,Umesh,Vmesh).^2);
+
+figure(2)
+quiver(Umesh, Vmesh, dudt(0,Umesh,Vmesh)./Norm,dvdt(0,Umesh,Vmesh)./Norm,'linewidth',3,'color',...
+    [.75 .75 .75],'ShowArrowHead','on')
+
+
