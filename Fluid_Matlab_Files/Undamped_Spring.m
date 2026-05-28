@@ -1,49 +1,41 @@
-%% Lotka_Volterra
+%% Undamped Spring System
 
 close all; clear; clc
 
-% Discretize time: 
+% Discretize time
+
 N = 1e4;
 t_0 = 0;
 t_end = 20;
 t = linspace(t_0,t_end,N);
 
-u0 = linspace(1,139,20);
-v0 = linspace(1,139,20);
-
-u = 1;
-v = 2;
-
-
-
-
 % Parameters
-a = .5;
-b = 9;
-y = 10;
-s = 20;
+
+k = 0.5;
+m = 50;
+
+u0 = 1;
+v0 = 2;
+x0 = [u0,v0];
 
 
+% Right hand side
 
+dudt = @(t, x)[x(2); (-k/m)*x(1)];
 
-% Right hand side:
-
-dudt = @(t,u)(a*u-b*u*v);
-dvdt = @(t,v)(-y*v+s*u*v);
-
-% Numerically solve the IVP
-[t,u] = ode45(dudt, t, u0);
-[t,v] = ode45(dudt, t, v0);
-
-% Define Equilibrium:
-% u_star = us + 2*sin(t);
-
-%Plot
+% Solve numerically using ode45
+    
+[t, x] = ode45(dudt, t, x0);
+    
+% get u and v from matrix
+u = x(:, 1);
+v = x(:, 2); 
+    
 figure;
 subplot(2,1,1);
 plot(t, u, 'LineWidth', 1.5); hold on;
 plot(t, v, 'LineWidth', 1.5);
-title('Lotka-Volterra');
+title('Undamped Mass-on-a-Spring System Dynamics');
 xlabel('Time (t)');
 ylabel('State Values');
 grid on;
@@ -56,3 +48,4 @@ xlabel('u0');
 ylabel('v0');
 grid on;
 grid minor;
+
