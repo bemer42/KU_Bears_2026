@@ -3,9 +3,9 @@
 close all; clear; clc
 
 % Discretize time: 
-N = 1e4;
+N = 1e5;
 t_0 = 0;
-t_end = 10000;
+t_end = 5e6;
 t = linspace(t_0,t_end,N);
 
 A0 = 90;
@@ -67,7 +67,7 @@ dUdt = @(t, U)[F(U(1),U(2)) ;
       ((1+U(1)/K7+U(3)/K20).*(1+ U(1)/K7+ U(2)/K20 + K21./((K21+U(3)).*g(U(1),U(2),U(3),W)))-(U(2).*U(3)/(K20^2))) ];
 
 % Numerically solve the IVP
-[t,U] = ode45(dUdt, t, U0);
+[t,U] = ode23s(dUdt, t, U0);
 
 A = U(:,1);
 B = U(:,2);
@@ -80,14 +80,16 @@ dsigmadB = (sqrt(TCF0) .* (2*K16 + B)) ./ (2 .* A .* (K16 + B).^(1.5));
 
 
 %Plot
-% figure(1);
-% plot3(A, B, X, 'k-', 'LineWidth',2); hold on;
-% title('APC-Axin-Beta-Catenin Model');
-% xlabel('APC');
-% ylabel('Beta-Catenin');
-% zlabel('Axin')
-% grid on;
-% grid minor;
+figure(1);
+plot(t,A, 'k-', 'LineWidth',3); hold on;
+plot(t,B, 'k-', 'LineWidth',3);
+plot(t, X, 'k-', 'LineWidth',3);
+title('APC-Axin-Beta-Catenin Model');
+xlabel('APC');
+ylabel('Beta-Catenin');
+zlabel('Axin')
+grid on;
+grid minor;
 
 %%Phase Plane
 N_mesh = 5;
@@ -103,13 +105,13 @@ vec = linspace(0,1,N_mesh);
 % Fx = @(A,B,X) ((-X/K20).*G(A,B,X,W)+(1+A/K7+X/K20).*H(A,B,X))./ ...
 %       ((1+A/K7+X/K20).*(1+ A/K7+ B/K20 + K21./((K21+X).*g(A,B,X,W)))-(B.*X/(K20^2)));
 
-figure(1)
+figure(2)
 plot3(A, B, X, 'k-', 'LineWidth', 2); hold on;
 plot3(A0,B0,X0, 'go','LineWidth', 4)
 plot3(A(end),B(end),X(end), 'ro', 'LineWidth',3)
-plot3(A,zeros(size(t)),X,'w', 'LineWidth',.5);
-plot3(A,B, zeros(size(t)),'w', 'LineWidth',.5);
-plot3(zeros(size(t)),B,X,'w', 'LineWidth',.5);
+plot3(A,zeros(size(t)),X,'k-', 'LineWidth',.5);
+plot3(A,B, zeros(size(t)),'k-', 'LineWidth',.5);
+plot3(zeros(size(t)),B,X,'k-', 'LineWidth',.5);
 xlabel('APC');
 ylabel('Beta Catenin');
 zlabel('Axin');
