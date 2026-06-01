@@ -59,7 +59,7 @@ v_vec = linspace(min(v),max(v),N_mesh);
 [U_mesh,V_mesh] = meshgrid(u_vec,v_vec);
 
 Fu_vec = @(u,v) k1*u*(1-u/m1) - d1*u*v;
-Fv_vec = @(u,v) k2*u*(1-u/m2) - d2*u*v;
+Fv_vec = @(u,v) k2*v*(1-v/m2) - d2*u*v;
 
 figure(2)
 quiver(U_mesh,V_mesh, Fu_vec(U_mesh,V_mesh),Fv_vec(U_mesh,V_mesh));
