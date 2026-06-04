@@ -47,34 +47,61 @@ end
 
 toc
 
-%% Plot
-for i = 1: N_z
+[T,Z] = meshgrid(t,z);
+
+
+%%  APC Plot: 
+figure(1)
+surf(T,Z,A'); 
+hold on;
+shading interp
+title('APC','fontsize',20)
+xlabel('time (t)','fontsize',16)
+ylabel('crypt level (z)','fontsize',16)
+set(gca,'fontsize',14)
+
+% Plot of trajectories
+for i = 1:6:N_z
 
     figure(1)
-    plot3(t, z(i) * ones(size(t)), A(:,i), 'w', 'linewidth',3);
-    hold on;
-
-    figure(2)
-    plot3(t, z(i) * ones(size(t)), B(:,i), 'w', 'linewidth',3); hold on;
-
-    figure(3)
-    plot3(t, z(i) * ones(size(t)), X(:,i), 'w', 'linewidth',3); hold on;
- 
+    plot3(t,z(i)*ones(size(t)),A(:,i),'k','linewidth',3); hold on;
 
 end
 
-%% Surface Plots:
-
-[T, Z] = meshgrid(t,z);
-
-figure(1)
-surf(T,Z,A')
-shading interp
-
+%%  Beta Catenin Plot: 
 figure(2)
-surf(T,Z,B')
+surf(T,Z,B'); 
+hold on;
 shading interp
+title('Beta-Catenin','fontsize',20)
+xlabel('time (t)','fontsize',16)
+ylabel('crypt level (z)','fontsize',16)
+set(gca,'fontsize',14)
 
+% Plot of trajectories
+for i = 1:6:N_z
+
+    figure(2)
+    plot3(t,z(i)*ones(size(t)),B(:,i),'k','linewidth',3); hold on;
+
+end
+
+
+
+%%  Axin Plot: 
 figure(3)
-surf(T,Z,X')
+surf(T,Z,X'); 
+hold on;
 shading interp
+title('Axin','fontsize',20)
+xlabel('time (t)','fontsize',16)
+ylabel('crypt level (z)','fontsize',16)
+set(gca,'fontsize',14)
+
+% Plot of trajectories
+for i = 1:6:N_z
+
+    figure(3)
+    plot3(t,z(i)*ones(size(t)),X(:,i),'k','linewidth',3); hold on;
+
+end
