@@ -79,15 +79,11 @@ sigma = @(A,B) (B .* sqrt(TCF0)) ./ (A .* sqrt(K16 + B));
 dsigmadA = @(A,B) -(B .* sqrt(TCF0)) ./ (A.^2 .* sqrt(K16 + B));
 dsigmadB = @(A,B) (sqrt(TCF0) .* (2*K16 + B)) ./ (2 .* A .* (K16 + B).^(1.5));
 
-dAdt = F(A,B);
-dBdt = ((1 + A./K7 + B./K20 + K21./((K21+X).*g(A,B,X,W))).*G(A,B,X,W) - (B./K20).*H(A,B,X)) ./ ...
-       ((1 + A./K7 + X./K20).*(1 + A./K7 + B./K20 + K21./((K21+X).*g(A,B,X,W))) - (B.*X./(K20^2)));
-
-
-dsigmadt = dsigmadA(A,B) .* dAdt + dsigmadB(A,B) .* dBdt;
+dsigmadt = dsigmadA(A,B)
 
 sigma1 = sigma(A,B);
 
+for i = 1: t
 
 
 %Plot
@@ -96,7 +92,6 @@ plot(t,A, 'k-', 'LineWidth',3); hold on;
 plot(t,B, 'k-', 'LineWidth',3);
 plot(t, X, 'k-', 'LineWidth',3);
 plot(t,sigma1);
-plot(t,dsigmadt);
 title('APC-Axin-Beta-Catenin Model');
 xlabel('APC');
 ylabel('Beta-Catenin');

@@ -1,0 +1,80 @@
+%% Spatial ODE with space varying Wnt Signal
+
+close all; clear; clc
+
+tic
+
+% Discretize time: 
+N_t = 1e4;
+t_0 = 0;
+t_end = 1e5;
+t = linspace(t_0,t_end,N_t);
+
+% Discretize space:
+N_z = 83;
+z_0 = 0;
+z_end = 82;
+z = linspace(z_0, z_end, N_z);
+
+% Define a Wnt signal:
+
+W = @(z) exp(-z/10);
+
+% Define initial conditon:
+
+A0 = @(z) 25 + (114-25)/82*z;
+B0 = @(z) 289 + (23-289)/82*z;
+X0 = @(z) 9e-4 + (5e-4 - 9e-4)/82*z;
+
+% Initialize matrices:
+
+A = zeros(N_t,N_z); B = A; X = A;
+
+
+% Solve for APC, Beta-Cat, and Axin for every z value
+
+for i = 1: N_z
+    
+    U0 = [A0(z(i)), B0(z(i)), X0(z(i))];
+    [t,U] = ABX_fun(t,U0 , W(z(i)));
+
+    A(:, i) = U(:, 1);
+    B(:, i) = U(:, 2);
+    X(:, i) = U(:, 3);
+
+
+end
+
+toc
+
+%% Plot
+for i = 1: N_z
+
+    figure(1)
+    plot3(t, z(i) * ones(size(t)), A(:,i), 'w', 'linewidth',3);
+    hold on;
+
+    figure(2)
+    plot3(t, z(i) * ones(size(t)), B(:,i), 'w', 'linewidth',3); hold on;
+
+    figure(3)
+    plot3(t, z(i) * ones(size(t)), X(:,i), 'w', 'linewidth',3); hold on;
+ 
+
+end
+
+%% Surface Plots:
+
+[T, Z] = meshgrid(t,z);
+
+figure(1)
+surf(T,Z,A')
+shading interp
+
+figure(2)
+surf(T,Z,B')
+shading interp
+
+figure(3)
+surf(T,Z,X')
+shading interp
