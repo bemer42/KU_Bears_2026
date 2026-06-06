@@ -1,0 +1,26 @@
+%% Spatial ODE with space varying Wnt Signal
+close; clear all; clc
+
+tic 
+
+% Discretize time: 
+N_t   = 1e2;
+t_0   = 0;
+t_end = 5e2;
+t     = linspace(t_0,t_end,N_t);
+
+% Discretize space: 
+N_x   = 100; 
+x_0   = 0; 
+x_end = 1; 
+x     = linspace(x_0,x_end,N_x)';
+dx    = x(2) - x(1);
+
+% Differentiation Matrix: 
+Dxx            = toeplitz([-2 1 zeros(1,N_x-2)]);
+Dxx(1,2)       = 2;
+Dxx(end,end-1) = 2;
+
+% Initial condition: 
+f = @(x) cos(x/2/pi)
+

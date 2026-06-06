@@ -4,7 +4,7 @@ close; clear all; clc
 tic 
 
 % Discretize time: 
-N_t   = 1e4;
+N_t   = 1e3;
 t_0   = 0;
 t_end = 5e4;
 t     = linspace(t_0,t_end,N_t);
@@ -43,47 +43,61 @@ toc
 
 [T,Z] = meshgrid(t,z);
 
-%  APC Plot: 
-figure(1)
-surf(T,Z,A'); 
-hold on;
-shading interp
+% %  APC Plot: 
+% figure(1)
+% surf(T,Z,A'); 
+% hold on;
+% shading interp
+% 
+% % Plot of trajectories
+% for i = 1:6:N_z
+% 
+%     figure(1)
+%     plot3(t,z(i)*ones(size(t)),A(:,i),'k','linewidth',3); hold on;
+% 
+% end
+% 
+% %  Beta Catenin Plot: 
+% figure(2)
+% surf(T,Z,B'); 
+% hold on;
+% shading interp
+% 
+% % Plot of trajectories
+% for i = 1:6:N_z
+% 
+%     figure(2)
+%     plot3(t,z(i)*ones(size(t)),B(:,i),'k','linewidth',3); hold on;
+% 
+% end
+% %  Axin Plot: 
+% figure(3)
+% surf(T,Z,X'); 
+% hold on;
+% shading interp
+% 
+% % Plot of trajectories
+% for i = 1:6:N_z
+% 
+%     figure(3)
+%     plot3(t,z(i)*ones(size(t)),X(:,i),'k','linewidth',3); hold on;
+% 
+% end
 
-% Plot of trajectories
-for i = 1:6:N_z
 
-    figure(1)
-    plot3(t,z(i)*ones(size(t)),A(:,i),'k','linewidth',3); hold on;
+%% Animation
 
-end
+for i = 1:N_t
 
-%  Beta Catenin Plot: 
-figure(2)
-surf(T,Z,B'); 
-hold on;
-shading interp
-
-% Plot of trajectories
-for i = 1:6:N_z
-
-    figure(2)
-    plot3(t,z(i)*ones(size(t)),B(:,i),'k','linewidth',3); hold on;
-
-end
-
-
-
-%  Axin Plot: 
-figure(3)
-surf(T,Z,X'); 
-hold on;
-shading interp
-
-% Plot of trajectories
-for i = 1:6:N_z
-
-    figure(3)
-    plot3(t,z(i)*ones(size(t)),X(:,i),'k','linewidth',3); hold on;
+    figure(4)
+    plot(z,A(i,:)/max(max(A)),'k','linewidth',3); hold on;
+    plot(z,B(i,:)/max(max(B)),'r','linewidth',3); 
+    plot(z,X(i,:)/max(max(X)),'b','linewidth',3); 
+    plot(z,W(z),'g','linewidth',3)
+    hold off
+    if i == 1
+        pause
+    end
 
 end
 
