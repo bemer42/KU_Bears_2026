@@ -5,9 +5,9 @@ close all; clear; clc
 tic
 
 % Discretize time: 
-N_t = 1e4;
+N_t = 1e3;
 t_0 = 0;
-t_end = 1e5;
+t_end = 5e3;
 t = linspace(t_0,t_end,N_t);
 
 % Discretize space:
@@ -103,5 +103,17 @@ for i = 1:6:N_z
 
     figure(3)
     plot3(t,z(i)*ones(size(t)),X(:,i),'k','linewidth',3); hold on;
+
+end
+
+%% Animation
+
+for i=1: N_t
+
+    figure(4)
+    plot(z,A(i, :), 'w', 'LineWidth',3); hold on;
+    if i == 1
+        pause
+    end
 
 end
