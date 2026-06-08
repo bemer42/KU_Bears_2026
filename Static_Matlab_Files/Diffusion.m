@@ -6,7 +6,7 @@ tic
 % Discretize time: 
 N_t   = 2e2;
 t_0   = 0;
-t_end = 5;
+t_end = 2;
 t     = linspace(t_0,t_end,N_t);
 
 % Discretize space: 
@@ -26,12 +26,12 @@ Dxx(end,end-1) = 2;
 Dxx            = k*Dxx/dx^2;
 
 % Initial condition: 
-f = @(x) cos(2*pi*x)+1;
+f = @(x) 2*x.*cos(2*pi*x)+1;
 
 U0 = f(x);
 
 % Define the Right hand side: 
-dUdt = @(t,U) Dxx*U - .09*U;
+dUdt = @(t,U) Dxx*U + .09*U.*(1-U/1.6);
 
 % Solve the Heat equation:
 tic
@@ -53,3 +53,20 @@ for i = 1:N_t
 
 end
 
+
+% Surface Plot: 
+[T,X] = meshgrid(t,x);
+
+figure(2)
+surf(T,X,U')
+shading interp
+hold on
+
+for i = 1:6:N_x
+
+    plot3(t,x(i)*ones(size(t)),U(:,i),'k','linewidth',2)
+    if i == 1
+        plot3(zeros(size(x)),x,U(1,:),'k','linewidth',5)
+    end
+    hold on
+end
