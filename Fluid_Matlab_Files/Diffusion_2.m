@@ -45,7 +45,7 @@ toc
 for i = 1: N_t
 
     figure(1)
-    plot(x,U(i,:), 'w', 'LineWidth',3); hold off;
+    plot(x,U(i,:), 'k', 'LineWidth',3); hold off;
     if i == 1
        pause
     end

@@ -14,8 +14,8 @@ dx = x(2) - x(1);
 
 % Parameters
 k = .1;
-alpha = 0.25;
-m = 5;
+alpha = 1.5;
+m = 1.5;
 
 % Differentiation Matrix:
 Dxx = toeplitz([-2 1 zeros(1,N_x-2)]);
@@ -31,7 +31,7 @@ U0 = f(x);
 
 % Define the Right hand side:
 
-dUdt = @(t,U) Dxx * U - alpha * U .* (1 - U/m);
+dUdt = @(t,U) Dxx * U + alpha * U .* (1 - U/m);
 
 % Solve the heat equation:
 tic
@@ -45,7 +45,7 @@ toc
 for i = 1: N_t
 
     figure(1)
-    plot(x,U(i,:), 'w', 'LineWidth',3); hold off;
+    plot(x,U(i,:), 'k', 'LineWidth',3); hold off;
     if i == 1
         pause
     end

@@ -55,9 +55,10 @@ figure(1)
 surf(T,Z,A'); 
 hold on;
 shading interp
-title('APC','fontsize',20)
-xlabel('time (t)','fontsize',16)
-ylabel('crypt level (z)','fontsize',16)
+title('APC','fontsize',20, 'FontName', 'Times New Roman')
+xlabel('time (t)','fontsize',16, 'FontName', 'Times New Roman')
+ylabel('crypt level (z)','fontsize',16, 'FontName', 'Times New Roman')
+zlabel('APC (nM)', 'FontSize',16,'FontName', 'Times New Roman')
 set(gca,'fontsize',14)
 
 % Plot of trajectories
@@ -73,9 +74,10 @@ figure(2)
 surf(T,Z,B'); 
 hold on;
 shading interp
-title('Beta-Catenin','fontsize',20)
-xlabel('time (t)','fontsize',16)
-ylabel('crypt level (z)','fontsize',16)
+title('Beta-Catenin','fontsize',20,'FontName', 'Times New Roman')
+xlabel('time (t)','fontsize',16, 'FontName', 'Times New Roman')
+ylabel('crypt level (z)','fontsize',16, 'FontName', 'Times New Roman')
+zlabel('Beta-Catenin (nM)', 'FontSize',16, 'FontName', 'Times New Roman')
 set(gca,'fontsize',14)
 
 % Plot of trajectories
@@ -93,9 +95,10 @@ figure(3)
 surf(T,Z,X'); 
 hold on;
 shading interp
-title('Axin','fontsize',20)
-xlabel('time (t)','fontsize',16)
-ylabel('crypt level (z)','fontsize',16)
+title('Axin','fontsize',20,'FontName', 'Times New Roman')
+xlabel('time (t)','fontsize',16, 'FontName', 'Times New Roman')
+ylabel('crypt level (z)','fontsize',16,'FontName', 'Times New Roman')
+zlabel('Axin (nM)', 'FontSize',16, 'FontName', 'Times New Roman')
 set(gca,'fontsize',14)
 
 % Plot of trajectories
@@ -111,9 +114,25 @@ end
 for i=1: N_t
 
     figure(4)
-    plot(z,A(i, :), 'w', 'LineWidth',3); hold on;
+    plot(z,A(i, :), 'k', 'LineWidth',3); hold off;
     if i == 1
         pause
     end
+  
+
+    figure(5)
+    plot(z,B(i, :), 'k', 'LineWidth',3); hold off;
+    if i == 1
+        pause
+    end
+
+
+
+    figure(6)
+    plot(z,X(i, :), 'k', 'LineWidth',3); hold off;
+    if i == 1
+        pause
+    end
+
 
 end
