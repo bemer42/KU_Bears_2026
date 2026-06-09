@@ -2,11 +2,6 @@
 
 function h = ABX_dxdt(a, b,x, w)
 
-% Discretize time: 
-N_t = 1e3;
-t_0 = 0;
-t_end = 5e3;
-t = linspace(t_0,t_end,N_t);
 
 
 % Parameters
