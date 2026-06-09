@@ -1,6 +1,6 @@
-%% ABX_dbdt
+%% ABX_dxdt
 
-function g = ABX_dbdt(a, b,x, w)
+function h = ABX_dxdt(a, b,x, w)
 
 % Discretize time: 
 N_t = 1e3;
@@ -48,8 +48,9 @@ G_fun = @(a, b, x, w) v12 - (k13 + a.*x.*(f_fun(w)./g_fun(a,b,x, w))+F_fun(a,b).
 H_fun = @(a, b, x)  v14 - ((k15.*a)./(Km+a)+F_fun(a,b)./K7).*x;
 
 
-g = ((1 + a/K7 + b/K20 + K21./((K21+x).*g_fun(a,b,x,w))).*G_fun(a,b,x,w) - (b/K20).*H_fun(a,b,x))./ ...
-((1+ a/K7 + x/K20).*(1+ a/K7 + b/K20 + K21./((K21+x).*g_fun(a,b,x,w)))-(b.*x/(K20^2)));
+
+h = ((-x/K20).*G_fun(a,b,x,w)+(1+a/K7+x/K20).*H_fun(a,b,x))./ ...
+    ((1+a/K7+x/K20).*(1+ a/K7+ b/K20 + K21./((K21+x).*g_fun(a,b,x,w)))-(b.*x/(K20^2)));
 
 
 end
