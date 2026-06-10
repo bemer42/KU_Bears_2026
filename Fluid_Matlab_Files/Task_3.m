@@ -35,6 +35,8 @@ A0 = @(z) 25 + (114-25)/82*z;
 B0 = @(z) 289 + (23-289)/82*z;
 X0 = @(z) 9e-4 + (5e-4 - 9e-4)/82*z;
 
+
+
 U0 = [A0(z); B0(z); X0(z)];
 
 %Define Wnt signal:
@@ -78,6 +80,8 @@ for i = 1: 3: N_t
     plot(z,W(z), 'm', 'LineWidth',3); hold off;
     if i == 1
         pause
+    else
+        drawnow
     end
     grid on
     grid minor

@@ -1,4 +1,4 @@
-%% Diffusion 2D
+%% Diffusion 2D Nonlinear
 
 % Discretize time: 
 N_t = 2e3;
@@ -27,6 +27,7 @@ dy = y(2) - y(1);
 % Parameters
 kx = .1;
 ky = .1;
+alpha = 0.5;
 
 % Differentiation Matrix:
 Dxx = toeplitz([-2 1 zeros(1,N_x-2)]);
@@ -45,13 +46,13 @@ f = @(x,y) 2*ones(size(x)).*(x>.25).*(x<.75).*(y>.25).*(y<.75);
 U0 = f(X,Y);
 U0 = U0(:);
 
-% Define the Right hand side:
-dUdt = @(t,U) reshape(Dxx*reshape(U, N_x,N_y) + reshape(U, N_x,N_y)*Dyy',[],1);
+% Define the right hand side
+dUdt = @(t, U) nonlin_diff(t, U, N_x, N_y, Dxx, Dyy, alpha);
 
 % Solve the Heat equation:
 tic
 options = odeset('Stats','on');
-[t,U] = ode23s(dUdt,t,U0,options);
+[t, U] = ode23s(dUdt, t, U0, options);
 toc
 
 %% Animation:
@@ -63,12 +64,8 @@ for i = 1: N_t
     surf(X,Y,U_plot); hold off;
     if i == 1
         pause
-    else
-        drawnow
     end
-    zlim([0 2])
+    zlim([0 10])
     grid on
     grid minor
 end
-
-
