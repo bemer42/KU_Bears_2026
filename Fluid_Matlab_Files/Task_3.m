@@ -3,7 +3,7 @@
 % Discretize time: 
 N_t = 1e3;
 t_0 = 0;
-t_end = 1e4;
+t_end = 1e5;
 t = linspace(t_0,t_end,N_t);
 
 % Discretize space:
@@ -14,9 +14,9 @@ z = linspace(z_0, z_end, N_z)';
 dz = z(2) - z(1);
 
 % Parameters
-da = 1e-5;
-db = 1e-5;
-dx = 1e-5;
+da = 0e-8;
+db = 0e-8;
+dx = 0e-8;
 TCF0 = 15.0;
 K16 = 30.0;
 
@@ -64,12 +64,6 @@ sigma = @(A,B) (B .* sqrt(TCF0)) ./ (A .* sqrt(K16 + B));
 dsigmadA = @(A,B) -(B .* sqrt(TCF0)) ./ (A.^2 .* sqrt(K16 + B));
 dsigmadB = @(A,B) (sqrt(TCF0) .* (2*K16 + B)) ./ (2 .* A .* (K16 + B).^(1.5));
 
-dAdt = ABX_dadt(A,B);
-dBdt = ABX_dbdt(A,B,X, W(z)');
-
-
-dsigmadt = dsigmadA(A,B) .* dAdt + dsigmadB(A,B) .* dBdt;
-
 S = sigma(A,B);
 
 % Animation:
@@ -80,8 +74,8 @@ for i = 1: 3: N_t
     plot(z,A(i,:)/max(max(A)), 'k', 'LineWidth',3); hold on;
     plot(z,B(i,:)/max(max(B)), 'r', 'LineWidth',3); 
     plot(z,X(i,:)/max(max(X)), 'b', 'LineWidth',3); 
-    plot(z,S(i,:),'g', 'Linewidth',3);
-    plot(z, dsigmadt(i,:), 'color', 'cyan', 'Linewidth', 3); hold off;
+    plot(z,S(i,:)/max(max(S)),'g', 'Linewidth',3);
+    plot(z,W(z), 'm', 'LineWidth',3); hold off;
     if i == 1
         pause
     end

@@ -1,0 +1,66 @@
+%% Diffusion 2D
+
+% Discretize time: 
+N_t = 1e3;
+t_0 = 0;
+t_end = 5;
+t = linspace(t_0,t_end,N_t);
+
+% Discretize x space:
+N_x = 1e1;
+x_0 = 0;
+x_end = 1;
+x = linspace(x_0, x_end, N_x)';
+dx = x(2) - x(1);
+
+% Discretize y space:
+N_y = 2e1;
+y_0 = 0;
+y_end = 1;
+y = linspace(y_0, y_end, N_y)';
+dy = y(2) - y(1);
+
+%Create mesh grid:
+
+[X,Y] = meshgrid(y,x);
+
+
+
+% Parameters
+kx = .1;
+ky = .1;
+
+
+% Differentiation Matrix:
+Dxx = toeplitz([-2 1 zeros(1,N_x-2)]);
+Dxx(1,2) = 2;
+Dxx(end, end-1) = 2;
+Dxx = k*Dxx/dx^2;
+
+% Differentiation Matrix:
+Dyy = toeplitz([-2 1 zeros(1,N_y-2)]);
+Dyy(1,2) = 2;
+Dyy(end, end-1) = 2;
+Dyy = k*Dyy/dy^2;
+
+
+
+% Initial Condition
+f = @(x,y) 2*ones(size(X)).*(x>.25).*(x<.75).*(y>.25).*(y<.75);
+U0 = f(X,Y);
+U0 = U0(:);
+
+% Define the Right hand side:
+
+dUdt = @(t,U) reshape(kxx*Dxx*reshape(U, N_x,N_y) + kyy*reshape(U, N_x,N_y)*Dyy', [],1);
+
+
+% Animation:
+
+for i = 1: N_t
+
+    figure(1)
+
+end
+
+
