@@ -24,12 +24,9 @@ dy = y(2) - y(1);
 
 [X,Y] = meshgrid(y,x);
 
-
-
 % Parameters
 kx = .1;
 ky = .1;
-
 
 % Differentiation Matrix:
 Dxx = toeplitz([-2 1 zeros(1,N_x-2)]);
@@ -43,30 +40,33 @@ Dyy(1,2) = 2;
 Dyy(end, end-1) = 2;
 Dyy = ky*Dyy/dy^2;
 
-
-
 % Initial Condition
-f = @(x,y) 2*ones(size(X)).*(x>.25).*(x<.75).*(y>.25).*(y<.75);
+f = @(x,y) 2*ones(size(x)).*(x>.25).*(x<.75).*(y>.25).*(y<.75);
 U0 = f(X,Y);
 U0 = U0(:);
 
 % Define the Right hand side:
+dUdt = @(t,U) reshape(Dxx*reshape(U, N_x,N_y) + reshape(U, N_x,N_y)*Dyy',[],1);
 
-dUdt = @(t,U) reshape(Dxx*reshape(U, N_x,N_y) + reshape(U, N_x,N_y)*Dyy', [],1);
+% Solve the Heat equation:
+tic
+options = odeset('Stats','on');
+[t,U] = ode23s(dUdt,t,U0,options);
+toc
 
-
-% Animation:
-
+%% Animation:
 for i = 1: N_t
 
-    U_plot = reshape(U(i,:)', N_x, N_y);
+    U_plot = reshape(U(i,:), N_x, N_y);
+
     figure(1)
     surf(X,Y,U_plot); hold off;
-
     if i == 1
         pause
     end
-
+    zlim([0 2])
+    grid on
+    grid minor
 end
 
 
