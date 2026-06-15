@@ -1,13 +1,14 @@
 %% Diffusion 2D Nonlinear
+close all; clear; clc
 
 % Discretize time: 
-N_t = 2e3;
+N_t = 2e2;
 t_0 = 0;
 t_end = 5;
 t = linspace(t_0,t_end,N_t);
 
 % Discretize x space:
-N_x = 1e1;
+N_x = 3e1;
 x_0 = 0;
 x_end = 1;
 x = linspace(x_0, x_end, N_x)';
@@ -22,32 +23,32 @@ dy = y(2) - y(1);
 
 %Create mesh grid:
 
-[X,Y] = meshgrid(y,x);
+[Y,X] = meshgrid(y,x);
 
 % Parameters
-kx = .1;
-ky = .1;
-alpha = 0.5;
+
+alpha = 0.005;
+
+% Differentiation Matrix
+Dx = diag(1/2*ones(N_x-1,1),1)+diag(-1/2*ones(N_x-1,1),-1);
+Dx(1,2) = 0;
+Dx(end, end-1) = 0;
+Dx = Dx/dx;
 
 % Differentiation Matrix:
-Dxx = toeplitz([-2 1 zeros(1,N_x-2)]);
-Dxx(1,2) = 2;
-Dxx(end, end-1) = 2;
-Dxx = kx*Dxx/dx^2;
-
-% Differentiation Matrix:
-Dyy = toeplitz([-2 1 zeros(1,N_y-2)]);
-Dyy(1,2) = 2;
-Dyy(end, end-1) = 2;
-Dyy = ky*Dyy/dy^2;
+Dy = diag(1/2*ones(N_y-1,1),1)+diag(-1/2*ones(N_y-1,1),-1);
+Dy(1,2) = 0;
+Dy(end, end-1) = 0;
+Dy = Dy/dy;
 
 % Initial Condition
-f = @(x,y) 2*ones(size(x)).*(x>.25).*(x<.75).*(y>.25).*(y<.75);
+%f = @(x,y) ones(size(x))+2*ones(size(x)).*(x>.25).*(x<.75).*(y>.25).*(y<.75);
+f = @(x,y) 2*exp(-(x-.5).^2*5 - (y - .5).^2*5);
 U0 = f(X,Y);
 U0 = U0(:);
 
 % Define the right hand side
-dUdt = @(t, U) nonlin_diff(t, U, N_x, N_y, Dxx, Dyy, alpha);
+dUdt = @(t, U) nonlin_diff(t, U, N_x, N_y, Dx, Dy, alpha);
 
 % Solve the Heat equation:
 tic
@@ -64,8 +65,11 @@ for i = 1: N_t
     surf(X,Y,U_plot); hold off;
     if i == 1
         pause
+    else
+        drawnow
     end
-    zlim([0 10])
+    
+    
     grid on
     grid minor
 end

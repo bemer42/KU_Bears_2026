@@ -47,7 +47,10 @@ for i = 1: N_t
     plot(x,U(i,:), 'k', 'LineWidth',3); hold off;
     if i ==1
         pause
+    else
+        drawnow
     end
+    
     grid on
     grid minor
     ylim([0,2])
