@@ -16,9 +16,9 @@ dz = z(2) - z(1);
 
 % Define parameters
 
-r_b = 5;
-r_t = 10;   
-a = 0.02;   
+r_b = 41/2/pi;
+r_t = 10/pi;   
+a = 0.3;   
 alpha = 0.05;
    
 
