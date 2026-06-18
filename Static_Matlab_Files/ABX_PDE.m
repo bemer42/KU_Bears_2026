@@ -1,8 +1,10 @@
 %% ABX PDE
+clear, close all, clc
+
 % Discretize time:
-N_t = 2e3;
+N_t = 3e3;
 t_0 = 0;
-t_end = 1e5;
+t_end = 3e5;
 t = linspace(t_0,t_end,N_t);
 
 % Discretize space:
@@ -13,9 +15,9 @@ z = linspace(z_0, z_end, N_z)';
 dz = z(2) - z(1);
 
 % Parameters
-da = 1e-9;
-db = 1e-9;
-dx = 1e-9;
+da = 0e-9;
+db = 0e-9;
+dx = 0e-9;
 
 % Differentiation Matrix:
 Dzz = toeplitz([-2 1 zeros(1,N_z-2)]);
@@ -39,8 +41,8 @@ W = @(z) exp(-z/10);
 
 % Define the Right hand side:
 dUdt = @(t,U) [ABX_dadt(U(1:N_z),U(N_z+1:2*N_z)) + Da*U(1:N_z);
-    ABX_dbdt(U(1:N_z),U(N_z+1:2*N_z),U(2*N_z+1:end),W(z)) + Db*U(N_z+1:2*N_z);
-    ABX_dxdt(U(1:N_z),U(N_z+1:2*N_z),U(2*N_z+1:end),W(z)) + Dx*U(2*N_z+1:end)];
+               ABX_dbdt(U(1:N_z),U(N_z+1:2*N_z),U(2*N_z+1:end),W(z)) + Db*U(N_z+1:2*N_z);
+               ABX_dxdt(U(1:N_z),U(N_z+1:2*N_z),U(2*N_z+1:end),W(z)) + Dx*U(2*N_z+1:end)];
 
 % Solve the heat equation:
 tic
@@ -52,15 +54,43 @@ A = U(:,1:N_z);
 B = U(:,N_z+1:2*N_z);
 X = U(:,2*N_z+1:end);
 
+% Plot of Average Values
+N_avg = 300;
+A_avg = mean(A(end-N_avg:end,:));
+B_avg = mean(B(end-N_avg:end,:));
+X_avg = mean(X(end-N_avg:end,:));
+
+figure(1)
+plot(z,max(A(end-N_avg:end,:))/max(max(A)), 'g', 'LineWidth',3); hold on;
+plot(z,max(B(end-N_avg:end,:))/max(max(B)), 'r', 'LineWidth',3);
+plot(z,max(X(end-N_avg:end,:))/max(max(X)), 'b', 'LineWidth',3);
+plot(z,W(z),'m:','linewidth',3);
+plot(z,min(A(end-N_avg:end,:))/max(max(A)), 'g', 'LineWidth',3); 
+plot(z,min(B(end-N_avg:end,:))/max(max(B)), 'r', 'LineWidth',3);
+plot(z,min(X(end-N_avg:end,:))/max(max(X)), 'b', 'LineWidth',3);
+plot(z,A_avg/max(max(A)), 'g:', 'LineWidth',3); 
+plot(z,B_avg/max(max(B)), 'r:', 'LineWidth',3);
+plot(z,X_avg/max(max(X)), 'b:', 'LineWidth',3);
+legend('APC','beta-catenin','Axin','Wnt','fontsize',16)
+title('Average Concentrations along Crypt','fontsize',20)
+xlabel('crypt level','fontsize',16)
+ylabel('normalized concentration','fontsize',16)
+set(gca,'fontsize',14)
+grid on
+grid minor
+
 %% Concentration Animation:
 
-for i = 1:3:N_t
+dt = round(.01*N_t);
 
-    figure(1)
-    plot(z,A(i,:)/max(max(A)), 'k', 'LineWidth',3); hold on;
+for i = 1:dt:N_t
+
+    figure(2)
+    plot(z,A(i,:)/max(max(A)), 'g', 'LineWidth',3); hold on;
     plot(z,B(i,:)/max(max(B)), 'r', 'LineWidth',3);
     plot(z,X(i,:)/max(max(X)), 'b', 'LineWidth',3);
-    legend('APC','beta-catenin','Axin','fontsize',16)
+    plot(z,W(z),'m:','LineWidth',3)
+    legend('APC','beta-catenin','Axin','Wnt','fontsize',16)
     title('Protein Concentration along Crypt','fontsize',20)
     xlabel('crypt level','fontsize',16)
     ylabel('normalized concentration','fontsize',16)
@@ -75,14 +105,15 @@ for i = 1:3:N_t
 
 end
 
-%% Stemness:
+%% Stemness Animation:
 S = B.*sqrt(15)./A./sqrt(B + 30);
+dt = round(.01*N_t);
 
-% Animation:
-for i = 1:3:N_t
+for i = 1:dt:N_t
 
-    figure(2)
-    plot(z,S(i,:)/max(max(S)), 'k', 'LineWidth',3); hold off;
+    figure(3)
+    plot(z,S(i,:)/max(max(S)), 'k', 'LineWidth',3); hold on;
+    plot(z,W(z),'m:','LineWidth',3)
     title('Stemness along Crypt','fontsize',20)
     xlabel('crypt level','fontsize',16)
     ylabel('normalized concentration','fontsize',16)
@@ -97,32 +128,62 @@ for i = 1:3:N_t
 
 end
 
-%% Average Values
-N_avg = 300;
-A_avg = mean(A(end-N_avg:end,:));
-B_avg = mean(B(end-N_avg:end,:));
-X_avg = mean(X(end-N_avg:end,:));
-S_avg = mean(S(end-N_avg:end,:));
+%%  Surface Plots: 
+[T,Z] = meshgrid(t,z);
 
-figure(3)
-plot(z,A_avg/max(max(A)), 'k:', 'LineWidth',3); hold on;
-plot(z,B_avg/max(max(B)), 'r:', 'LineWidth',3);
-plot(z,X_avg/max(max(X)), 'b:', 'LineWidth',3);
-plot(z,S_avg/max(max(S)), 'm:', 'LineWidth',3);
-plot(z,W(z),'g','linewidth',3);
-plot(z,max(A(end-N_avg:end,:))/max(max(A)), 'k', 'LineWidth',3); 
-plot(z,max(B(end-N_avg:end,:))/max(max(B)), 'r', 'LineWidth',3);
-plot(z,max(X(end-N_avg:end,:))/max(max(X)), 'b', 'LineWidth',3);
-plot(z,max(S(end-N_avg:end,:))/max(max(S)), 'm', 'LineWidth',3);
-plot(z,min(A(end-N_avg:end,:))/max(max(A)), 'k', 'LineWidth',3); 
-plot(z,min(B(end-N_avg:end,:))/max(max(B)), 'r', 'LineWidth',3);
-plot(z,min(X(end-N_avg:end,:))/max(max(X)), 'b', 'LineWidth',3);
-plot(z,min(S(end-N_avg:end,:))/max(max(S)), 'm', 'LineWidth',3);
-plot(z,W(z),'g','linewidth',3);
-legend('APC','beta-catenin','Axin','Stemness','Wnt','fontsize',16)
-title('Average Concentrations along Crypt','fontsize',20)
-xlabel('crypt level','fontsize',16)
-ylabel('normalized concentration','fontsize',16)
+% APC:
+figure(4)
+surf(T,Z,A'); 
+hold on;
+shading interp
+title('APC','fontsize',20, 'FontName', 'Times New Roman')
+xlabel('time (t)','fontsize',16, 'FontName', 'Times New Roman')
+ylabel('crypt level (z)','fontsize',16, 'FontName', 'Times New Roman')
+zlabel('APC (nM)', 'FontSize',16,'FontName', 'Times New Roman')
 set(gca,'fontsize',14)
-grid on
-grid minor
+
+% APC trajectories:
+for i = 1:6:N_z
+
+    figure(4)
+    plot3(t,z(i)*ones(size(t)),A(:,i),'k','linewidth',3); hold on;
+
+end
+
+%  Beta Catenin: 
+figure(5)
+surf(T,Z,B'); 
+hold on;
+shading interp
+title('Beta-Catenin','fontsize',20,'FontName', 'Times New Roman')
+xlabel('time (t)','fontsize',16, 'FontName', 'Times New Roman')
+ylabel('crypt level (z)','fontsize',16, 'FontName', 'Times New Roman')
+zlabel('Beta-Catenin (nM)', 'FontSize',16, 'FontName', 'Times New Roman')
+set(gca,'fontsize',14)
+
+% Beta Catenin trajectories
+for i = 1:6:N_z
+
+    figure(5)
+    plot3(t,z(i)*ones(size(t)),B(:,i),'k','linewidth',3); hold on;
+
+end
+
+%  Axin: 
+figure(6)
+surf(T,Z,X'); 
+hold on;
+shading interp
+title('Axin','fontsize',20,'FontName', 'Times New Roman')
+xlabel('time (t)','fontsize',16, 'FontName', 'Times New Roman')
+ylabel('crypt level (z)','fontsize',16,'FontName', 'Times New Roman')
+zlabel('Axin (nM)', 'FontSize',16, 'FontName', 'Times New Roman')
+set(gca,'fontsize',14)
+
+% Axin trajectories:
+for i = 1:6:N_z
+
+    figure(6)
+    plot3(t,z(i)*ones(size(t)),X(:,i),'k','linewidth',3); hold on;
+
+end
