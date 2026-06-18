@@ -8,7 +8,7 @@ t_end = 3e5;
 t = linspace(t_0,t_end,N_t);
 
 % Discretize space:
-N_z = 3e2;
+N_z = 1e2;
 z_0 = 0;
 z_end = 82;
 z = linspace(z_0, z_end, N_z)';
