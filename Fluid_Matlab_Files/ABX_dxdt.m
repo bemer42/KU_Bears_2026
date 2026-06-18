@@ -1,11 +1,8 @@
-%% ABX_dxdt
+%% Right hand side for APC ODE:
 
-function h = ABX_dxdt(a, b,x, w)
-
-
+function h = ABX_dxdt(a,b,x,w)
 
 % Parameters
-
 k1 = 0.182;
 k2 = 1.82e-2;
 k3 = 5.0e-2;
@@ -35,17 +32,19 @@ v12 = 0.423;
 v14 = 8.22e-5;
 Km = 98;
 
-f_fun = @(w) (k1*k4*k6*k9*K21/ (k5*K7*K8))*((w+k2/k1)./(k1*(Dsh0*k3+k_6)*w+k2*k_6));
-g_fun = @(a, b, x , w) ((K21+x)./GSK0)+(((k9+k10).*a.*x)./(k9*k10*GSK0)).*(((k4+k5)*K8*k10)./(k4*(k9+k10))+b).*f_fun(w);
+% Functions:
+f_fun = @(w)       (k1*k4*k6*k9*K21/ (k5*K7*K8))*((w+k2/k1)./(k1*(Dsh0*k3+k_6)*w+k2*k_6));
+g_fun = @(a,b,x,w) ((K21+x)./GSK0)+(((k9+k10).*a.*x)./(k9*k10*GSK0)).*(((k4+k5)*K8*k10)./(k4*(k9+k10))+b).*f_fun(w);
+F_fun = @(a,b)     (v18./(1+(TCF0.*b)./(Kt.*(K16+b))+b./Kb))-k19.*a;
+G_fun = @(a,b,x,w) v12 - (k13 + a.*x.*(f_fun(w)./g_fun(a,b,x,w))+F_fun(a,b)./K17).*b ;
+H_fun = @(a,b,x)   v14 - ((k15.*a)./(Km+a)+F_fun(a,b)./K7).*x;
 
-F_fun = @(a, b) (v18./(1+(TCF0.*b)./(Kt.*(K16+b))+b./Kb))-k19.*a;
-G_fun = @(a, b, x, w) v12 - (k13 + a.*x.*(f_fun(w)./g_fun(a,b,x, w))+F_fun(a,b)./K17).*b ;
-H_fun = @(a, b, x)  v14 - ((k15.*a)./(Km+a)+F_fun(a,b)./K7).*x;
-
-
-
+% Right hand side:
 h = ((-x/K20).*G_fun(a,b,x,w)+(1+a/K7+x/K20).*H_fun(a,b,x))./ ...
     ((1+a/K7+x/K20).*(1+ a/K7+ b/K20 + K21./((K21+x).*g_fun(a,b,x,w)))-(b.*x/(K20^2)));
 
-
 end
+
+
+
+
