@@ -4,11 +4,11 @@ clear, close all, clc
 % Discretize time: 
 N_t = 1e3;
 t_0 = 0;
-t_end = 2e5;
+t_end = 1e6;
 t = linspace(t_0,t_end,N_t);
 
 % Discretize space:
-N_z = 2e2;
+N_z = 3e2;
 z_0 = 0;
 z_end = 78;
 z = linspace(z_0, z_end, N_z)';
@@ -51,17 +51,20 @@ for i = 1:dt:N_t
     
     Q_l = (-2*Q(i,1) + 1/2*Q(i,2))/(-3/2);
     Q_r = 1;
-    Q_full = [Q_l Q(i,:) Q_r];
+    Q_full = [Q_l Q(i,:) Q_r]';
+    Vel = (1./sqrt(xp(z).^2+1)).*alpha./Q_full.^2;
 
     figure(1)
-    plot(z,Q_full,'k','linewidth',5)
+    plot(z,Q_full,'k','linewidth',5) 
+    hold on
+    plot(z,Vel,'k:','linewidth',5)
     grid on
     grid minor
+%     ylim([1 1.5])
     if i == 1
         pause
     end
     hold off
-    ylim([0 2])
 
 end
 
