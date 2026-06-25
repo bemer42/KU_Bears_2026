@@ -4,7 +4,7 @@ clear; close all; clc
 % Discretize time: 
 N_t = 1e3;
 t_0 = 0;
-t_end = 2e6;
+t_end = 2e5;
 t = linspace(t_0,t_end,N_t);
 
 % Discretize space:
@@ -27,7 +27,7 @@ r_b = 41/2/pi;
 r_t = 10/pi;   
 a = 0.3;   
 alpha = 0.05;
-k = 1e-5;
+k = 1e-6;
 
 
 % Crypt width
