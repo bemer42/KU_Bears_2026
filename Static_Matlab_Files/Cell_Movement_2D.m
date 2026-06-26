@@ -1,16 +1,16 @@
 %% Diffusion 2D Nonlinear
 close all; clear; clc
 
-% Boundary condition set: 
-bcType = "NbDt";
+% Boundary condition set:
+bcType = "DbDt";
 
 % Parameters
 par = struct();
 par.alpha_th = 1e-1;
 par.alpha_z  = 1e0;
-par.k        = 2e-4;
+par.k        = 1e-4;
 par.zu       = 50;
-par.zb       = 5; 
+par.zb       = 40;
 par.thc      = pi/2;
 par.thw      = pi/2;
 
@@ -21,20 +21,20 @@ t_end = 2e3;
 t = linspace(t_0,t_end,N_t);
 
 % Discretize theta space:
-Nth    = 4e1;
+Nth    = 5e1;
 th_0   = 0;
 th_end = 2*pi;
 th     = linspace(th_0,th_end,Nth)';
 dth    = th(2) - th(1);
 
 % Discretize z space:
-Nz    = 4e1;
+Nz    = 5e1;
 z_0   = 0;
 z_end = 78;
 z     = linspace(z_0,z_end,Nz)';
 dz    = z(2) - z(1);
 
-%Create mesh grid:
+% Create mesh grid:
 [Z,Th] = meshgrid(z,th);
 
 % Differentiation Matrices
@@ -55,13 +55,13 @@ r_t   = 10/pi;
 a     = 0.3;
 
 r   = @(theta,z) r_b*(1 - exp(-a * z)) + r_t * exp(a * (z - z_end));
-rth = @(theta,z) 0;
+rth = @(theta,z) 0*theta;
 rz  = @(theta,z) -a*r_b*exp(-a*z) + a*r_t*exp(a*z-z_end);
 
 % Initial Condition
 gau = @(th,z,thc,zc,a,s) a*exp(-(th-thc).^2/s-(z-zc).^2/s/5);
 f = @(th,z) 1 + 3*exp(-(th-pi).^2*5 - (z - 20).^2/15);
-f = @(th,z) 1 + ones(size(th)).*(abs(z-15)<10).*(abs(th-pi)<.5) + exp(-(th-pi).^2*5 - (z - 20).^2/15);
+f = @(th,z) 1 + ones(size(th)).*(abs(z-35)<10).*(abs(th-pi)<pi/4) + exp(-(th-pi).^2*5 - (z - 20).^2/15);
 % f = @(th,z) 1 + gau(th,z,pi/2,50,2,10) + gau(th,z,pi,20,2,1) + gau(th,z,3*pi/2,70,3,10);
 Q0 = f(Th,Z);
 Q0_int = Q0(:,2:end-1);
@@ -78,57 +78,85 @@ toc
 
 % Expand interior into full for each time point:
 Q_full = zeros(N_t, Nth*Nz);
-rth_0  = rth(Th,Z); rth_0 = rth_0(:,1);
-rz_0   = rz(Th,Z);  rz_0  = rz_0(:,1);
-r_0    = r(Th,Z);   r_0   = r_0(:,1);
+
+% Precompute geometry arrays:
+R   = r(Th,Z);
+RTH = rth(Th,Z);
+RZ  = rz(Th,Z);
+
+% One-sided z-derivative stencil coefficients from Dz
+b0 = Dz(1,1);       b1 = Dz(1,2);       b2 = Dz(1,3);
+t2 = Dz(end,end-2); t1 = Dz(end,end-1); t0 = Dz(end,end);
 
 for i = 1:N_t
 
-    % Reshape q_int into matrix: (Nth) x (Nz-2)
+    % Reshape q_int into matrix:
     Q_int = reshape(q_int(i,:), Nth, Nz-2);
 
-    % Initialize full snapshot:
+    % Initialize full snapshot and insert interior
     Q = zeros(Nth, Nz);
-
-    % Put interior z-columns back in:
     Q(:,2:Nz-1) = Q_int;
 
-    % Dirichlet at z = z_end:
-    Q(:,Nz) = 1;
-
-    % No-flux at z = 0 (Neumann q_z = 0), 2nd-order one-sided:
-    % Z Interior Boundary Conditions:
-    % -- no flux at z = z_0 (left side of matrix):
-    % Need to solve for q_0 = Q(:,1);
-    Cz   = spdiags(par.alpha_z*(rth_0.^2+r_0.^2),0,Nth,Nth);
-    Cth  = spdiags(par.alpha_th*(rth_0.*rz_0),0,Nth,Nth);
-
-    % Build A and b from:
-    %  Cz*((-3/2*q0 + 2*q1 - 1/2*q2)/dz) - Cth*(Dth*q0) = 0
-    A = Dz(1,1)*Cz - Cth*Dth;
-    b = -Cz*(Dz(1,2)*Q_int(:,1) + Dz(1,3)*Q_int(:,2));
-    % Solve for boundary values Q(:,1)
-    Q(:,1) = A \ b;
-    
+    % Apply BCs based on bcType
+    switch bcType
+        case "NbDt"
+            % Bottom Neumann
+            Cz  = spdiags(par.alpha_z*(RTH(:,1).^2 + R(:,1).^2), 0, Nth, Nth);
+            Cth = spdiags(par.alpha_th*(RTH(:,1).*RZ(:,1)),      0, Nth, Nth);
+            A = b0*Cz - Cth*Dth;
+            b = -Cz*(b1*Q(:,2) + b2*Q(:,3));
+            Q(:,1) = A \ b;
+            % Top Dirichlet
+            Q(:,end) = 1;
+        case "NbNt"
+            % Bottom Neumann
+            Cz  = spdiags(par.alpha_z*(RTH(:,1).^2 + R(:,1).^2), 0, Nth, Nth);
+            Cth = spdiags(par.alpha_th*(RTH(:,1).*RZ(:,1)),      0, Nth, Nth);
+            A = b0*Cz - Cth*Dth;
+            b = -Cz*(b1*Q(:,2) + b2*Q(:,3));
+            Q(:,1) = A \ b;
+            % Top Neumann
+            Cz  = spdiags(par.alpha_z*(RTH(:,Nz).^2 + R(:,Nz).^2), 0, Nth, Nth);
+            Cth = spdiags(par.alpha_th*(RTH(:,Nz).*RZ(:,Nz)),      0, Nth, Nth);
+            A = t0*Cz - Cth*Dth;
+            b = -Cz*(t1*Q(:,end-1) + t2*Q(:,end-2));
+            Q(:,end) = A \ b;
+        case "DbNt"
+            % Bottom Dirichlet
+            Q(:,1) = 1;
+            % Top Neumann (Flux_z = 0): solve Q(:,end)
+            Cz  = spdiags(par.alpha_z*(RTH(:,Nz).^2 + R(:,Nz).^2), 0, Nth, Nth);
+            Cth = spdiags(par.alpha_th*(RTH(:,Nz).*RZ(:,Nz)),      0, Nth, Nth);
+            A = t0*Cz - Cth*Dth;
+            b = -Cz*(t1*Q(:,end-1) + t2*Q(:,end-2));
+            Q(:,end) = A \ b;
+        case "DbDt"
+            % Bottom Dirichlet
+            Q(:,1) = 1;
+            % Top Dirichlet
+            Q(:,end) = 1;
+        otherwise
+            error('bcType must be one of: "NbDt", "NbNt", "DbNt", "DbDt".');
+    end
     % Save flattened snapshot
     Q_full(i,:) = Q(:);
 end
 
-%% Animation 
-dm = 4;                        
+%% Animation
+dm = 4;
 Thm = Th(1:dm:end, 1:dm:end);
 Zm  = Z( 1:dm:end, 1:dm:end);
 dt  = round(.01*N_t);
 
 for i = 1:dt:N_t
- 
+
     Q = reshape(Q_full(i,:), Nth, Nz);
     Qm = Q(1:dm:end, 1:dm:end);
-    
+
     figure(1)
     surf(Th, Z, Q);
-%     surf(Thm,Zm,Qm);
-%     shading interp
+    %     surf(Thm,Zm,Qm);
+    %     shading interp
     colormap summer
     lighting gouraud
     grid on
@@ -137,11 +165,13 @@ for i = 1:dt:N_t
     ylabel('z','fontsize',20)
     zlabel('q','fontsize',20)
     title('Cell Movement PDE on (\theta,z)','fontsize',25)
-    zlim([0 5])
+    xlim([0 2*pi])
+    ylim([0 78])
+    zlim([0 2])
     caxis([min(Q_full(:)) max(Q_full(:))])
     view(45,30)
     if i == 1
-        pause 
+        pause
     end
     hold off
 end
@@ -159,7 +189,7 @@ for k = 1:dt:N_t
 
     figure(2)
     surf(X_plot,Y_plot,Z_plot,Q)
-%     shading interp
+    shading interp
     colormap turbo
     colorbar
     xlim([-30 30])
@@ -171,3 +201,23 @@ for k = 1:dt:N_t
     end
 
 end
+
+
+%% Steady State Analysis
+
+X_plot = r(Th,Z).*cos(Th);
+Y_plot = r(Th,Z).*sin(Th);
+Z_plot = Z;
+
+Q_ss = reshape(Q_full(end,:),Nth,Nz);
+
+figure(3)
+surf(X_plot,Y_plot,Z_plot,Q_ss)
+shading interp
+colormap turbo
+colorbar
+xlim([-30 30])
+ylim([-30 30])
+zlim([0 80])
+caxis([1 1.25])
+
