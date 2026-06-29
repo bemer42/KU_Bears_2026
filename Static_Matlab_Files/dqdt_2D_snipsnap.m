@@ -22,8 +22,8 @@ Q = zeros(Nth, Nz);
 Q(:,2:Nz-1) = Q_int;
 
 % Convenience: boundary derivative stencil coefficients from Dz
-b0 = Dz(1,1);       b1 = Dz(1,2);       b2 = Dz(1,3);          
-t2 = Dz(end,end-2); t1 = Dz(end,end-1); t0 = Dz(end,end);  
+b0 = Dz(1,1);       b1 = Dz(1,2);       b2 = Dz(1,3);
+t2 = Dz(end,end-2); t1 = Dz(end,end-1); t0 = Dz(end,end);
 
 % Helper that solves Flux_z(:,boundary)=0 for the boundary column qB = Q(:,jB)
 % using one-sided stencil: a0*qB + a1*q1 + a2*q2 for q_z at boundary
@@ -43,14 +43,14 @@ t2 = Dz(end,end-2); t1 = Dz(end,end-1); t0 = Dz(end,end);
 % Apply boundary conditions
 switch bcType
     case "NbDt"
-        % bottom Neumann 
+        % bottom Neumann
         Q(:,1) = solveFluxNeumannAtBoundary(1, b0, b1, b2, Q(:,2), Q(:,3));
         % top Dirichlet
         Q(:,end) = 1;
     case "NbNt"
         % bottom Neumann
         Q(:,1) = solveFluxNeumannAtBoundary(1, b0, b1, b2, Q(:,2), Q(:,3));
-        % top Neumann 
+        % top Neumann
         Q(:,end) = solveFluxNeumannAtBoundary(Nz, t0, t1, t2, Q(:,end-1), Q(:,end-2));
     case "DbNt"
         % bottom Dirichlet
@@ -66,23 +66,62 @@ switch bcType
         error('bcType must be one of: "NbDt", "NbNt", "DbNt", "DbDt".');
 end
 
-% Metric tensor determinant:
+% --- Metric tensor determinant at nodes 
 det_g = rth.^2 + r.^2 .* (rz.^2 + 1);
 
-% Fluxes:
+% --- Flux_th 
 Flux_th = (1 ./ (Q.^2) ./ sqrt(det_g)) .* ...
-          ( alpha_th*(rz.^2+1).*(Dth*Q) - alpha_z*(rth.*rz).*(Q*Dz') );
-Flux_z  = (1 ./ (Q.^2) ./ sqrt(det_g)) .* ...
-          ( -alpha_th*(rth.*rz).*(Dth*Q) + alpha_z*(rth.^2 + r.^2).*(Q*Dz') );
+    ( alpha_th*(rz.^2+1).*(Dth*Q) - alpha_z*(rth.*rz).*(Q*Dz') );
 
-% Cell proliferation:
+% FV z-divergence on NONUNIFORM grid 
+
+% Extract 1D z-grid from your mesh
+zv = Z(1,:).';                     
+dzf = diff(zv);                      
+
+% Control-volume "cell widths" around nodes, using midpoints
+zf  = [zv(1); 0.5*(zv(1:end-1)+zv(2:end)); zv(end)];   
+dzc = diff(zf);                    
+
+% Face averages of geometry + solution 
+rf   = 0.5*(r(:,1:end-1)   + r(:,2:end));
+rthf = 0.5*(rth(:,1:end-1) + rth(:,2:end));
+rzf  = 0.5*(rz(:,1:end-1)  + rz(:,2:end));
+Qf   = 0.5*(Q(:,1:end-1)   + Q(:,2:end));
+
+det_gf = rthf.^2 + rf.^2 .* (rzf.^2 + 1);
+
+% z-gradient at faces
+qz_face = (Q(:,2:end) - Q(:,1:end-1)) ./ (dzf.' );
+
+% theta-derivative at faces 
+DthQf = Dth * Qf;
+
+% Build face flux Flux_z at faces using the SAME numerator as your nodal Flux_z
+num_face = -alpha_th*(rthf.*rzf).*DthQf + alpha_z*(rthf.^2 + rf.^2).*qz_face;
+
+Flux_z_face = (1 ./ (Qf.^2) ./ sqrt(det_gf)) .* num_face;
+
+% Enforce Neumann as FACE FLUX = 0 (this is the FV-consistent way)
+if bcType == "NbDt" || bcType == "NbNt"
+    Flux_z_face(:,1) = 0;          % bottom face
+end
+if bcType == "NbNt" || bcType == "DbNt"
+    Flux_z_face(:,end) = 0;        % top face
+end
+
+% Divergence at nodes (Nth x Nz), only interior needed
+divFz = zeros(Nth, Nz);
+divFz(:,2:Nz-1) = (Flux_z_face(:,2:Nz-1) - Flux_z_face(:,1:Nz-2)) ./ (dzc(2:Nz-1).');
+
+% --- Cell proliferation 
 P = k * Q .* (Z < zu) .* (Z > zb) .* (abs(Th - thc) < thw);
 
-% PDE:
+% --- PDE 
 dQdt_full = (1 ./ sqrt(det_g)) .* (Dth*Flux_th) + ...
-            (1 ./ sqrt(det_g)) .* (Flux_z*Dz') + P;
+            (1 ./ sqrt(det_g)) .* divFz + P;
 
-% Return only interior z-columns 
+% Return only interior z-columns
 dQdt = dQdt_full(:,2:end-1);
 dqdt = dQdt(:);
 
