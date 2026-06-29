@@ -21,7 +21,7 @@ t_end = 1e5;
 t = linspace(t_0,t_end,N_t);
 
 % Discretize theta space:
-Nth    = 7.5e1;
+Nth    = 5e1;
 th_0   = 0;
 th_end = 2*pi;
 th     = linspace(th_0,th_end,Nth)';
