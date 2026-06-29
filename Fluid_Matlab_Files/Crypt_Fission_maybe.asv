@@ -25,19 +25,15 @@ R_z = r_b*(1 - exp(-a * Z_mesh)) + r_t * exp(a * (Z_mesh - L));
 
 G = 0.6; % growth parameter
 
-for c = -30 : 78
+for c = 0 : 78
 
     A = 1./ (1+exp(beta * (Z_mesh-c)));
 
-    if c < 0
-        A = A * exp(c); 
-    end
-
-    g = 1 + G * (4 * A .* (1 - A)); % radius expands as fission occurs
+    g = 1 + G * (4 * A .* (1 - A));
 
     p_u = sin(U_mesh);
     f = 1 - A + 2*A .* (p_u.^2);
-    %f = 1 - A .* (cos(U_mesh/2).^2);
+    f = 1 - A .* (cos(U_mesh/2).^2);
 
     lambda = f .* g .* R_z;
 

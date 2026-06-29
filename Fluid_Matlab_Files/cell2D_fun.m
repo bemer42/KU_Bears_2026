@@ -1,40 +1,42 @@
-%% Diffusion 2D Nonlinear
-close all; clear; clc
 
-% Boundary condition set: 
+function total_cells = cell2D_fun(k, zu)
+
+
+
+% Boundary condition set:
 bcType = "DbDt";
 
 % Parameters
 par = struct();
 par.alpha_th = 1e-1;
 par.alpha_z  = 1e0;
-par.k        = 1e-5;
-par.zu       = 27;
-par.zb       = 0; 
+par.k        = k;
+par.zu       = zu;
+par.zb       = 0;
 par.thc      = 0;
 par.thw      = 3*pi;
 
 % Discretize time:
 N_t = 2e3;
 t_0 = 0;
-t_end = 2e4;
+t_end = 2e5;
 t = linspace(t_0,t_end,N_t);
 
 % Discretize theta space:
-Nth    = 4e1;
+Nth    = 5e1;
 th_0   = 0;
 th_end = 2*pi;
 th     = linspace(th_0,th_end,Nth)';
 dth    = th(2) - th(1);
 
 % Discretize z space:
-Nz    = 4e1;
+Nz    = 5e1;
 z_0   = 0;
 z_end = 78;
 z     = linspace(z_0,z_end,Nz)';
 dz    = z(2) - z(1);
 
-%Create mesh grid:
+% Create mesh grid:
 [Z,Th] = meshgrid(z,th);
 
 % Differentiation Matrices
@@ -55,15 +57,11 @@ r_t   = 10/pi;
 a     = 0.3;
 
 r   = @(theta,z) r_b*(1 - exp(-a * z)) + r_t * exp(a * (z - z_end));
-rth = @(theta,z) 0 * theta;
+rth = @(theta,z) 0*theta;
 rz  = @(theta,z) -a*r_b*exp(-a*z) + a*r_t*exp(a*z-z_end);
 
 % Initial Condition
-gau = @(th,z,thc,zc,a,s) a*exp(-(th-thc).^2/s-(z-zc).^2/s/5);
-f = @(th,z) 1 + 3*exp(-(th-pi).^2*5 - (z - 20).^2/15);
-f = @(th,z) 1 + ones(size(th)).*(abs(z-15)<10).*(abs(th-pi)<.5) + exp(-(th-pi).^2*5 - (z - 20).^2/15);
-% f = @(th,z) 1 + gau(th,z,pi/2,50,2,10) + gau(th,z,pi,20,2,1) + gau(th,z,3*pi/2,70,3,10);
-f = @(th,z) 1 + 0*th;
+f = @(th,z) ones(size(th));
 Q0 = f(Th,Z);
 Q0_int = Q0(:,2:end-1);
 q0_int = Q0_int(:);
@@ -144,95 +142,21 @@ for i = 1:N_t
 end
 
 
-
-
-
-
-%% Animation 
-dm = 4;                        
-Thm = Th(1:dm:end, 1:dm:end);
-Zm  = Z( 1:dm:end, 1:dm:end);
-dt  = round(.01*N_t);
-
-for i = 1:dt:N_t
- 
-    Q = reshape(Q_full(i,:), Nth, Nz);
-    Qm = Q(1:dm:end, 1:dm:end);
-    
-    figure(1)
-    surf(Th, Z, Q);
-%     surf(Thm,Zm,Qm);
-%     shading interp
-    colormap summer
-    lighting gouraud
-    grid on
-    set(gca,'fontsize',16)
-    xlabel('\theta','fontsize',20)
-    ylabel('z','fontsize',20)
-    zlabel('q','fontsize',20)
-    title('Cell Movement PDE on (\theta,z)','fontsize',25)
-    zlim([0 5])
-    clim([min(Q_full(:)) max(Q_full(:))])
-    view(45,30)
-    if i == 1
-        pause 
-    else
-        drawnow
-    end
-    hold off
-end
-
-%% Plot on crypt domain
-dt = round(.01*N_t);
-
-X_plot = r(Th,Z).*cos(Th);
-Y_plot = r(Th,Z).*sin(Th);
-Z_plot = Z;
-
-for k = 1:dt:N_t
-
-    Q = reshape(Q_full(k,:),Nth,Nz);
-
-    figure(2)
-    surf(X_plot,Y_plot,Z_plot,Q)
-%     shading interp
-    colormap turbo
-    colorbar
-    xlim([-30 30])
-    ylim([-30 30])
-    zlim([0 80])
-    clim([1 1.25])
-    if k == 1
-        pause
-    else
-        drawnow
-    end
-
-end
-
-
 %% Surface integral
 R_grid   = r(Th, Z);
 Rth_grid = rth(Th, Z);
 Rz_grid  = rz(Th, Z);
 
+Q_ss = reshape(Q_full(i,:), Nth, Nz);
+
 
 dA_factor = sqrt(Rth_grid.^2 + R_grid.^2 .* (Rz_grid.^2 + 1));
 
-total_population = zeros(N_t, 1);
 
-for i = 1:N_t
-    Q_frame = reshape(Q_full(i,:), Nth, Nz);
+integrand = Q_ss .* dA_factor;
 
-    
-    integrand = Q_frame .* dA_factor;
 
-    
-    total_population(i) = trapz(z, trapz(th, integrand, 1));
+total_cells = trapz(z, trapz(th, integrand, 1));
+
+
 end
-figure(3)
-plot(t, total_population, 'LineWidth', 3)
-xlabel('t')
-ylabel('Total Cells')
-
-grid on; grid minor;

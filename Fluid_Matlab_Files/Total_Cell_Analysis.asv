@@ -1,0 +1,46 @@
+%% Relationship between total cells and k,zu
+
+close all; clear; clc
+
+% k vector:
+Nk = ;
+k_vec = logspace(-6,-4, Nk);
+
+% zu vector
+Nzu = 5;
+zu_vec = linspace(10, 70, Nzu);
+
+TC_Storage = zeros(Nk,Nzu);
+
+
+% nested loop
+
+
+for i = 1: Nk
+
+    for j = 1 : Nzu
+        TC_Storage(i, j) = cell2D_fun(k_vec(i),zu_vec(j));
+
+    end
+
+end
+
+% Mesh grid:
+
+[ZU_mesh, K_mesh] = meshgrid(zu_vec, k_vec);
+
+%%
+figure(1)
+surf(ZU_mesh, log10(K_mesh), TC_Storage)
+shading interp
+colormap turbo
+colorbar
+grid on
+grid minor
+
+xlabel('Upper proliferation boundary (zu)', 'FontSize',14)
+ylabel('k', 'FontSize',14)
+zlabel('Total cell count', 'FontSize',14)
+
+
+
