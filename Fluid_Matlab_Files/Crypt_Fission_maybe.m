@@ -25,7 +25,7 @@ R_z = r_b*(1 - exp(-a * Z_mesh)) + r_t * exp(a * (Z_mesh - L));
 
 G = 0.6; % growth parameter
 
-for c = -30 : 78
+for c = -30 : 150
 
     A = 1./ (1+exp(beta * (Z_mesh-c)));
 
@@ -33,7 +33,7 @@ for c = -30 : 78
         A = A * exp(c); 
     end
 
-    g = 1 + G * (4 * A .* (1 - A)); % radius expands as fission occurs
+    g = 1 + 1 ./ (1 + exp(beta * (Z_mesh - c)));
 
     p_u = sin(U_mesh);
     f = 1 - A + 2*A .* (p_u.^2);
@@ -53,7 +53,7 @@ for c = -30 : 78
     grid minor
     colormap winter
     axis equal
-    if c == 1
+    if c == -30
         pause
     else
         drawnow

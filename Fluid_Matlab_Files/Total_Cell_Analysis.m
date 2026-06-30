@@ -3,11 +3,11 @@
 close all; clear; clc
 
 % k vector:
-Nk = 2;
+Nk = 6;
 k_vec = logspace(-6,-4, Nk);
 
 % zu vector
-Nzu = 2;
+Nzu = 6;
 zu_vec = linspace(10, 70, Nzu);
 
 TC_Storage = zeros(Nk,Nzu);
