@@ -20,10 +20,13 @@ r_t = 10/pi;
 a = 0.3;   
 beta = 0.15;
 
+
+max_separation = 13;
+
 Z_mesh = L * V_mesh;
 R_z = r_b*(1 - exp(-a * Z_mesh)) + r_t * exp(a * (Z_mesh - L));
 
-G = 0.6; % growth parameter
+
 
 for c = -30 : 150
 
@@ -33,33 +36,48 @@ for c = -30 : 150
         A = A * exp(c); 
     end
 
-    g = 1 + 1 ./ (1 + exp(beta * (Z_mesh - c)));
+    %g = 1 + 1 ./ (1 + exp(beta * (Z_mesh - c)));
+    g = 1 + (sqrt(2) - 1) ./ (1 + exp(beta* (Z_mesh-c)));
 
-    p_u = sin(U_mesh);
-    f = 1 - A + 2*A .* (p_u.^2);
+    %p_u = sin(U_mesh);
+    %f = 1 - A + 2*A .* (p_u.^2);
     %f = 1 - A .* (cos(U_mesh/2).^2);
 
-    lambda = f .* g .* R_z;
+    %lambda = f .* g .* R_z;
+    lambda = g .* R_z;
 
-    X = lambda .* cos(U_mesh);
-    Y = lambda .* sin(U_mesh);
+    shift = max_separation * A;
+
+    X1 = lambda .* cos(U_mesh) - shift;
+    Y1 = lambda .* sin(U_mesh);
     Z = Z_mesh;
+
+    X2 = lambda .* cos(U_mesh) + shift;
+    Y2 = lambda .* sin(U_mesh);
+   
+   
 
     % Generate surface plot
     figure(1)
-    surf(X, Y, Z, lambda)
+    surf(X1, Y2, Z, lambda)
+    hold on
+
+    surf(X2, Y2, Z, lambda)
+    hold off
+
     shading interp
     grid on
     grid minor
     colormap winter
     axis equal
+    xlim([-45 45])
+    ylim([-45 45])
+    zlim([-2 80])
     if c == -30
-        pause
+        pause(1)
     else
         drawnow
     end
-    xlim([-30 30])
-    ylim([-30 30])
-    zlim([-2 80])
+    
 
 end

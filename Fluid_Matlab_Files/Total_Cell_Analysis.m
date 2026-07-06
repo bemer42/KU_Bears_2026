@@ -3,12 +3,12 @@
 close all; clear; clc
 
 % k vector:
-Nk = 6;
-k_vec = logspace(-6,-4, Nk);
+Nk = 10;
+k_vec = logspace(-10,-5, Nk);
 
 % zu vector
-Nzu = 6;
-zu_vec = linspace(10, 70, Nzu);
+Nzu = 10;
+zu_vec = linspace(10, 80, Nzu);
 
 TC_Storage = zeros(Nk,Nzu);
 
@@ -38,9 +38,9 @@ colorbar
 grid on
 grid minor
 
-xlabel('Upper proliferation boundary (zu)', 'FontSize',14)
-ylabel('k', 'FontSize',14)
-zlabel('Total cell count', 'FontSize',14)
+xlabel('Upper proliferation boundary (zu)', 'Font', 'Times New Roman', 'FontSize',14)
+ylabel('k', 'Font', 'Times New Roman','FontSize',14)
+zlabel('Total cell count', 'Font', 'Times New Roman','FontSize',14)
 
 
 

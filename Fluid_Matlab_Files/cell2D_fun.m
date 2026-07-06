@@ -4,7 +4,7 @@ function total_cells = cell2D_fun(k, zu)
 
 
 % Boundary condition set:
-bcType = "DbDt";
+bcType = "NbDt";
 
 % Parameters
 par = struct();
@@ -141,22 +141,54 @@ for i = 1:N_t
     Q_full(i,:) = Q(:);
 end
 
+%% Animation
+dm = 4;
+Thm = Th(1:dm:end, 1:dm:end);
+Zm  = Z( 1:dm:end, 1:dm:end);
+dt  = round(.01*N_t);
 
-%% Surface integral
-R_grid   = r(Th, Z);
-Rth_grid = rth(Th, Z);
-Rz_grid  = rz(Th, Z);
+for i = 1:dt:N_t
 
-Q_ss = reshape(Q_full(i,:), Nth, Nz);
+    Q = reshape(Q_full(i,:), Nth, Nz);
+    Qm = Q(1:dm:end, 1:dm:end);
 
-
-dA_factor = sqrt(Rth_grid.^2 + R_grid.^2 .* (Rz_grid.^2 + 1));
-
-
-integrand = Q_ss .* dA_factor;
-
-
-total_cells = trapz(z, trapz(th, integrand, 1));
-
-
+    figure(1)
+    surf(Th, Z, Q);
+    %     surf(Thm,Zm,Qm);
+    %     shading interp
+    colormap summer
+    lighting gouraud
+    grid on
+    set(gca,'fontsize',16)
+    xlabel('\theta','fontsize',20)
+    ylabel('z','fontsize',20)
+    zlabel('q','fontsize',20)
+    title('Cell Movement PDE on (\theta,z)','fontsize',25)
+    xlim([0 2*pi])
+    ylim([0 78])
+    zlim([0 2])
+    caxis([min(Q_full(:)) max(Q_full(:))])
+    view(45,30)
+    if i == 1
+        pause
+    end
+    hold off
 end
+
+%% Steady State Analysis
+
+X_plot = r(Th,Z).*cos(Th);
+Y_plot = r(Th,Z).*sin(Th);
+Z_plot = Z;
+
+Q_ss = reshape(Q_full(end,:),Nth,Nz);
+
+figure(3)
+surf(X_plot,Y_plot,Z_plot,Q_ss)
+shading interp
+colormap turbo
+colorbar
+xlim([-30 30])
+ylim([-30 30])
+zlim([0 80])
+caxis([1 1.25])
