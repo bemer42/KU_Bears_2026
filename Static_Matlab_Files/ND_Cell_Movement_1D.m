@@ -111,6 +111,7 @@ Vhat_ss = Vhat_full(:,end);
 
 % Total number of cells:
 Total_Cells = (L.^2*epsilon./ell).*2*pi*trapz(z_hat,r_hat.*Qhat_ss.*g_hat)
+Prolif_Cells = (L.^2*epsilon./ell).*2*pi*trapz(z_hat,r_hat.*(Qhat_ss.*(z<zp)).*g_hat)
 
 % Crypt renewal time:
 pos = find(z_hat>=1/L);
