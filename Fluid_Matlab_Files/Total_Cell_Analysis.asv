@@ -4,7 +4,7 @@ close all; clear; clc
 
 % k vector:
 Nk = 2;
-k_vec = logspace(-10,-5, Nk);
+k_vec = logspace(-7,-5, Nk);
 
 % zu vector
 Nzu = 2;
@@ -47,5 +47,6 @@ grid minor
 xlabel('Upper proliferation boundary (zu)', 'FontSize',14)
 ylabel('k', 'FontSize',14)
 zlabel('Total cell count', 'FontSize',14)
+
 
 

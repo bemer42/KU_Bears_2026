@@ -15,7 +15,7 @@ par.thc      = 0;
 par.thw      = 3*pi;
 
 % Discretize time:
-N_t = 2e3;
+N_t = 2e1;
 t_0 = 0;
 t_end = 1e5;
 t = linspace(t_0,t_end,N_t);

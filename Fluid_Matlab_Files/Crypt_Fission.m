@@ -1,4 +1,4 @@
-% Crypt fission maybe
+% Crypt fission 
 clear; close all; clc
 
 % Discretize space:
