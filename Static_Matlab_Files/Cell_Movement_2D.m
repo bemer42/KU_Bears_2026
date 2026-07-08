@@ -1,18 +1,24 @@
 %% Cell Movement 2D Nonlinear
 close all; clear; clc
 
+% Predefine structures:
+geom    = struct();
+diffmat = struct();
+par     = struct();
+
 % Boundary condition set:
 bcType = "NbDt";
  
-% Parameters
-par = struct();
-par.alpha_th = 1e-1;
-par.alpha_z  = 1e0;
-par.k        = 1e-4;
-par.zu       = 27;
-par.zb       = 0;
-par.thc      = 0;
-par.thw      = 3*pi;
+% Define parameters:
+alpha_z  = 5e3; 
+alpha_th = 1e2; 
+Tc       = 15.1954; 
+zp       = 27; 
+
+% Define geometry parameters:
+r_b   = 41/2/pi;
+r_t   = 10/pi;
+a     = 0.3;
 
 % Discretize time:
 N_t = 2e3;
@@ -30,7 +36,7 @@ dth    = th(2) - th(1);
 % Discretize z space:
 Nz   = 5e1;
 z_0  = 0;
-L    = 78;
+L    = 78.8783;
 % --- Uniform Grid ---
 z    = linspace(z_0,L,Nz)';
 dz   = z(2) - z(1);
@@ -57,27 +63,36 @@ Dz = Dz/dz;
 % --- Non-Uniform Grid --- 
 Dz = diffmat_nonuniform(z);
 
-% Radius function:
-r_b   = 41/2/pi;
-r_t   = 10/pi;
-a     = 0.3;
+R   = r_b*(1-exp(-a*Z))+r_t*exp(a*(Z-L));
+Rth = 0*Th;
+Rz  = a*r_b*exp(-a*Z) + a*r_t*exp(a*(Z-L));
+G   = sqrt(Rth.^2+R.^2.*(Rz.^2 + 1));
 
-r   = @(theta,z) r_b*(1 - exp(-a * z)) + r_t * exp(a * (z - L));
-rth = @(theta,z) 0*theta;
-rz  = @(theta,z) -a*r_b*exp(-a*z) + a*r_t*exp(a*z-L);
-
-% Initial Condition
-gau = @(th,z,thc,zc,a,s) a*exp(-(th-thc).^2/s-(z-zc).^2/s/5);
-% f = @(th,z) 1 + exp(-(th-pi).^2*5 - (z - 20).^2/15);
-% f = @(th,z) 1 + ones(size(th)).*(abs(z-35)<10).*(abs(th-pi)<pi/4) + exp(-(th-pi).^2*5 - (z - 20).^2/15);
-% f = @(th,z) 1 + gau(th,z,pi/2,50,2,10) + gau(th,z,pi,20,2,1) + gau(th,z,3*pi/2,70,3,10);
+% Initial Condition:
+% f = @(th,z) 1 + exp(-(z - zp).^2/.05-(th-pi/2).^2/.2); 
 f = @(th,z) ones(size(th));
 Q0 = f(Th,Z);
 Q0_int = Q0(:,2:end-1);
 q0_int = Q0_int(:);
 
+% Construct structures for pde: 
+diffmat.Dth = Dth; 
+diffmat.Dz  = Dz; 
+
+geom.Th  = Th;
+geom.Z   = Z;
+geom.R   = R; 
+geom.Rth = Rth; 
+geom.Rz  = Rz;
+geom.G   = G; 
+
+par.alpha_th = alpha_th;
+par.alpha_z  = alpha_z;
+par.Tc       = Tc;
+par.zp       = zp;
+
 % Define the right hand side
-dQdt = @(t, q_int) dqdt_2D_snipsnap(t, q_int, Th, Z, r(Th,Z), rth(Th,Z), rz(Th,Z), Dth, Dz, par, bcType);
+dQdt = @(t, q_int) dqdt_2D_snipsnap(t, q_int, diffmat, geom, par, bcType);
 
 % Solve the PDE:
 tic
@@ -89,11 +104,6 @@ toc
 
 % Expand interior into full for each time point:
 Q_full = zeros(N_t,Nth*Nz);
-
-% Precompute geometry arrays:
-R   = r(Th,Z);
-RTH = rth(Th,Z);
-RZ  = rz(Th,Z);
 
 % One-sided z-derivative stencil coefficients from Dz
 b0 = Dz(1,1);       b1 = Dz(1,2);       b2 = Dz(1,3);
@@ -112,8 +122,8 @@ for i = 1:N_t
     switch bcType
         case "NbDt"
             % Bottom Neumann
-            Cz  = spdiags(par.alpha_z*(RTH(:,1).^2 + R(:,1).^2), 0, Nth, Nth);
-            Cth = spdiags(par.alpha_th*(RTH(:,1).*RZ(:,1)),      0, Nth, Nth);
+            Cz  = spdiags(par.alpha_z*(Rth(:,1).^2 + R(:,1).^2), 0, Nth, Nth);
+            Cth = spdiags(par.alpha_th*(Rth(:,1).*Rz(:,1)),      0, Nth, Nth);
             A = b0*Cz - Cth*Dth;
             b = -Cz*(b1*Q(:,2) + b2*Q(:,3));
             Q(:,1) = A \ b;
@@ -121,14 +131,14 @@ for i = 1:N_t
             Q(:,end) = 1;
         case "NbNt"
             % Bottom Neumann
-            Cz  = spdiags(par.alpha_z*(RTH(:,1).^2 + R(:,1).^2), 0, Nth, Nth);
-            Cth = spdiags(par.alpha_th*(RTH(:,1).*RZ(:,1)),      0, Nth, Nth);
+            Cz  = spdiags(par.alpha_z*(Rth(:,1).^2 + R(:,1).^2), 0, Nth, Nth);
+            Cth = spdiags(par.alpha_th*(Rth(:,1).*Rz(:,1)),      0, Nth, Nth);
             A = b0*Cz - Cth*Dth;
             b = -Cz*(b1*Q(:,2) + b2*Q(:,3));
             Q(:,1) = A \ b;
             % Top Neumann
-            Cz  = spdiags(par.alpha_z*(RTH(:,Nz).^2 + R(:,Nz).^2), 0, Nth, Nth);
-            Cth = spdiags(par.alpha_th*(RTH(:,Nz).*RZ(:,Nz)),      0, Nth, Nth);
+            Cz  = spdiags(par.alpha_z*(Rth(:,Nz).^2 + R(:,Nz).^2), 0, Nth, Nth);
+            Cth = spdiags(par.alpha_th*(Rth(:,Nz).*Rz(:,Nz)),      0, Nth, Nth);
             A = t0*Cz - Cth*Dth;
             b = -Cz*(t1*Q(:,end-1) + t2*Q(:,end-2));
             Q(:,end) = A \ b;
@@ -136,8 +146,8 @@ for i = 1:N_t
             % Bottom Dirichlet
             Q(:,1) = 1;
             % Top Neumann (Flux_z = 0): solve Q(:,end)
-            Cz  = spdiags(par.alpha_z*(RTH(:,Nz).^2 + R(:,Nz).^2), 0, Nth, Nth);
-            Cth = spdiags(par.alpha_th*(RTH(:,Nz).*RZ(:,Nz)),      0, Nth, Nth);
+            Cz  = spdiags(par.alpha_z*(Rth(:,Nz).^2 + R(:,Nz).^2), 0, Nth, Nth);
+            Cth = spdiags(par.alpha_th*(Rth(:,Nz).*Rz(:,Nz)),      0, Nth, Nth);
             A = t0*Cz - Cth*Dth;
             b = -Cz*(t1*Q(:,end-1) + t2*Q(:,end-2));
             Q(:,end) = A \ b;
@@ -153,34 +163,103 @@ for i = 1:N_t
     Q_full(i,:) = Q(:);
 end
 
+% Steady State Analysis
+Q_ss = reshape(Q_full(end,:),Nth,Nz);
+
+% Total number of cells:
+Total_Cells = trapz(z,trapz(th,Q_ss.*G))
+
+% Velocity field: 
+% Vth = -(1./Q_ss.^3).*(1./G).*(...
+%         alpha_th.*(Rz.^2+1).*(Dth*Q_ss) - ...
+%         alpha_th.*(Rz.*Rth).*(Q_ss*Dz'));
+% Vz  = -(1./Q_ss.^3).*(1./G).*(...
+%         -alpha_z.*(Rz.*Rth).*(Dth*Q_ss) + ...
+%         alpha_z.*(Rth.^2+R.^2).*(Q_ss*Dz'));
+
+[Vth, Vz] = velocityField_FVconsistent_2D(Q_ss, diffmat, geom, par, bcType);
+
+% grid-independent starting height
+% Zcum = cumtrapz(z, trapz(th, G, 1));
+% Zcum = Zcum / Zcum(end);
+% z0   = interp1(Zcum, z, 0.01, 'linear');
+
+% travel time
+[Rmean, R, theta0] = avgTravelTimeFromVectorField(th, z, Vth, Vz, ...
+    'theta0', linspace(pi/2,3*pi/2,60), 'z0', z(2));
+Crypt_Renewal_Time = Rmean/24
+
+% Steady state plot:
+dm = 1;
+figure(1)
+subplot(2,1,1)
+surf(Th,Z,Q_ss);
+set(gca,'fontsize',16)
+title('Cell Density','fontsize',25,'interpreter','latex')
+xlabel('$\theta$','fontsize',20,'interpreter','latex')
+ylabel('$z$','fontsize',20,'interpreter','latex')
+zlabel('$q(\theta,z,t)$ and $v(\theta,z,t)$','fontsize',20,'interpreter','latex')
+grid on
+grid minor
+colormap turbo
+% colorbar
+caxis([1 max(max(Q_ss))])
+xlim([0 2*pi])
+ylim([0 L])
+view([0 0 1])
+subplot(2,1,2)
+quiver(Th(:,2:dm:end),Z(:,2:dm:end),Vth(:,2:dm:end),Vz(:,2:dm:end),...
+       1.0,'color',[.5 .5 .5],'Linewidth',2.5,'MaxHeadSize',.1);                      
+set(gca,'fontsize',16)
+title('Velocity Field','fontsize',25,'interpreter','latex')
+xlabel('$\theta$','fontsize',20,'interpreter','latex')
+ylabel('$z$','fontsize',20,'interpreter','latex')
+grid on
+grid minor
+xlim([0 2*pi])
+ylim([0 L])
+
+
 %% Animation
-dm = 4;
-Thm = Th(1:dm:end, 1:dm:end);
-Zm  = Z( 1:dm:end, 1:dm:end);
+dm = 1;
 dt  = round(.1*N_t);
  
 for i = 1:dt:N_t
 
     Q = reshape(Q_full(i,:), Nth, Nz);
-    Qm = Q(1:dm:end, 1:dm:end);
 
-    figure(1)
-    surf(Th, Z, Q);
-    %     surf(Thm,Zm,Qm);
-%     shading interp
-    colormap summer
-    lighting gouraud
-    grid on
+    Vth = -(1./Q.^3).*(1./G).*(...
+        alpha_th.*(Rz.^2+1).*(Dth*Q) - ...
+        alpha_th.*(Rz.*Rth).*(Q*Dz'));    
+    Vz  = -(1./Q.^3).*(1./G).*(...
+        -alpha_z.*(Rz.*Rth).*(Dth*Q) + ...
+        alpha_z.*(Rth.^2+R.^2).*(Q*Dz'));
+
+    figure(2)
+    subplot(2,1,1)
+    surf(Th,Z,Q);
     set(gca,'fontsize',16)
-    xlabel('\theta','fontsize',20)
-    ylabel('z','fontsize',20)
-    zlabel('q','fontsize',20)
-    title('Cell Movement PDE on (\theta,z)','fontsize',25)
+    title('Cell Density','fontsize',25,'interpreter','latex')
+    xlabel('$\theta$','fontsize',20,'interpreter','latex')
+    ylabel('$z$','fontsize',20,'interpreter','latex')
+    zlabel('$q(\theta,z,t)$ and $v(\theta,z,t)$','fontsize',20,'interpreter','latex')
+    grid on
+    grid minor
+%     caxis([1 max(max(Q))])
     xlim([0 2*pi])
-    ylim([0 78])
-    zlim([0.9 1.2])
-    caxis([min(Q_full(:)) max(Q_full(:))])
-    view(45,30)
+    ylim([0 L])
+    view([0 0 1])
+    subplot(2,1,2)
+    quiver(Th(:,2:dm:end),Z(:,2:dm:end),Vth(:,2:dm:end),Vz(:,2:dm:end),...
+        1.0,'color',[.5 .5 .5],'Linewidth',2.5,'MaxHeadSize',.1);
+    set(gca,'fontsize',16)
+    title('Velocity Field','fontsize',25,'interpreter','latex')
+    xlabel('$\theta$','fontsize',20,'interpreter','latex')
+    ylabel('$z$','fontsize',20,'interpreter','latex')
+    grid on
+    grid minor
+    xlim([0 2*pi])
+    ylim([0 L])
     if i == 1
         pause
     end

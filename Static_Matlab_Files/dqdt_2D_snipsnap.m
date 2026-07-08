@@ -1,13 +1,21 @@
-function dqdt = dqdt_2D_snipsnap(t, q_int, Th, Z, r, rth, rz, Dth, Dz, par, bcType)
+function dqdt = dqdt_2D_snipsnap(t, q_int, diffmat, geom, par, bcType)
 
-% Extract all parameters:
+% Collect all parameters:
 alpha_th = par.alpha_th;
 alpha_z  = par.alpha_z;
-k        = par.k;
-zu       = par.zu;
-zb       = par.zb;
-thc      = par.thc;
-thw      = par.thw;
+Tc       = par.Tc;
+zp       = par.zp;
+
+% Collect geometry: 
+Z   = geom.Z;
+R   = geom.R;
+Rth = geom.Rth; 
+Rz  = geom.Rz; 
+G   = geom.G;
+
+% Collect differentiation matrices: 
+Dz  = diffmat.Dz;
+Dth = diffmat.Dth; 
 
 % Sizes
 Nth = size(Dth,1);
@@ -30,8 +38,8 @@ t2 = Dz(end,end-2); t1 = Dz(end,end-1); t0 = Dz(end,end);
     function qB = solveFluxNeumannAtBoundary(jB, a0, a1, a2, q1, q2)
 
         % Coefficients at that boundary column
-        Cz  = spdiags(alpha_z*(rth(:,jB).^2 + r(:,jB).^2), 0, Nth, Nth);
-        Cth = spdiags(alpha_th*(rth(:,jB).*rz(:,jB)),      0, Nth, Nth);
+        Cz  = spdiags(alpha_z*(Rth(:,jB).^2 + R(:,jB).^2), 0, Nth, Nth);
+        Cth = spdiags(alpha_z*(Rth(:,jB).*Rz(:,jB)),      0, Nth, Nth);
 
         % Enforce (numerator of Flux_z)=0:
         %   Cz*(a0*qB + a1*q1 + a2*q2) - Cth*(Dth*qB) = 0
@@ -66,27 +74,24 @@ switch bcType
         error('bcType must be one of: "NbDt", "NbNt", "DbNt", "DbDt".');
 end
 
-% --- Metric tensor determinant at nodes 
-det_g = rth.^2 + r.^2 .* (rz.^2 + 1);
+% --- Flux_th
+Flux_th = (1 ./ (Q.^2) ./ G) .* ...
+          (alpha_th*(Rz.^2+1).*(Dth*Q) - alpha_th*(Rth.*Rz).*(Q*Dz') );
 
-% --- Flux_th 
-Flux_th = (1 ./ (Q.^2) ./ sqrt(det_g)) .* ...
-    ( alpha_th*(rz.^2+1).*(Dth*Q) - alpha_z*(rth.*rz).*(Q*Dz') );
-
-% FV z-divergence on NONUNIFORM grid 
+% FV z-divergence on NONUNIFORM grid
 
 % Extract 1D z-grid from your mesh
-zv = Z(1,:).';                     
-dzf = diff(zv);                      
+zv = Z(1,:).';
+dzf = diff(zv);
 
 % Control-volume "cell widths" around nodes, using midpoints
-zf  = [zv(1); 0.5*(zv(1:end-1)+zv(2:end)); zv(end)];   
-dzc = diff(zf);                    
+zf  = [zv(1); 0.5*(zv(1:end-1)+zv(2:end)); zv(end)];
+dzc = diff(zf);
 
-% Face averages of geometry + solution 
-rf   = 0.5*(r(:,1:end-1)   + r(:,2:end));
-rthf = 0.5*(rth(:,1:end-1) + rth(:,2:end));
-rzf  = 0.5*(rz(:,1:end-1)  + rz(:,2:end));
+% Face averages of geometry + solution
+rf   = 0.5*(R(:,1:end-1)   + R(:,2:end));
+rthf = 0.5*(Rth(:,1:end-1) + Rth(:,2:end));
+rzf  = 0.5*(Rz(:,1:end-1)  + Rz(:,2:end));
 Qf   = 0.5*(Q(:,1:end-1)   + Q(:,2:end));
 
 det_gf = rthf.^2 + rf.^2 .* (rzf.^2 + 1);
@@ -94,11 +99,11 @@ det_gf = rthf.^2 + rf.^2 .* (rzf.^2 + 1);
 % z-gradient at faces
 qz_face = (Q(:,2:end) - Q(:,1:end-1)) ./ (dzf.' );
 
-% theta-derivative at faces 
+% theta-derivative at faces
 DthQf = Dth * Qf;
 
 % Build face flux Flux_z at faces using the SAME numerator as your nodal Flux_z
-num_face = -alpha_th*(rthf.*rzf).*DthQf + alpha_z*(rthf.^2 + rf.^2).*qz_face;
+num_face = -alpha_z*(rthf.*rzf).*DthQf + alpha_z*(rthf.^2 + rf.^2).*qz_face;
 
 Flux_z_face = (1 ./ (Qf.^2) ./ sqrt(det_gf)) .* num_face;
 
@@ -114,12 +119,12 @@ end
 divFz = zeros(Nth, Nz);
 divFz(:,2:Nz-1) = (Flux_z_face(:,2:Nz-1) - Flux_z_face(:,1:Nz-2)) ./ (dzc(2:Nz-1).');
 
-% --- Cell proliferation 
-P = k * Q .* (Z < zu) .* (Z > zb) .* (abs(Th - thc) < thw);
+% --- Cell proliferation
+P = log(2)/Tc * Q .* (Z < zp);
 
-% --- PDE 
-dQdt_full = (1 ./ sqrt(det_g)) .* (Dth*Flux_th) + ...
-            (1 ./ sqrt(det_g)) .* divFz + P;
+% --- PDE
+dQdt_full = (1 ./ G) .* (Dth*Flux_th) + ...
+    (1 ./ G) .* divFz + P;
 
 % Return only interior z-columns
 dQdt = dQdt_full(:,2:end-1);

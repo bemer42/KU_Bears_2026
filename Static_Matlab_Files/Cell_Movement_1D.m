@@ -8,12 +8,16 @@ par     = struct();
 
 % Define BCs and dimesional pde:
 bcType  = "NbDt";
-dimType = "Dim";
 
 % Define parameters:
-par.alpha = 1.6406e3;
-par.zp    = 27; 
-par.Tc    = 15.1954;
+alpha = 1.6406e3;
+zp    = 27; 
+Tc    = 15.1954;
+
+% Define geometry parameters:
+r_b   = 41/2/pi;
+r_t   = 10/pi;
+a     = 0.3;
 
 % Discretize time:
 Nt    = 7e3;
@@ -28,16 +32,10 @@ L     = 78.8783;
 z     = linspace(z_0, L, Nz)';
 dz    = z(2) - z(1);
 
-% Define geometry
-r_b   = 41/2/pi;
-r_t   = 10/pi;
-a     = 0.3;
-
-r  = @(z) r_b*(1 - exp(-a*z)) + r_t * exp(a*(z-L));
-rz = @(z) a*r_b*exp(-a*z) + a*r_t*exp(a*(z-L));
-
-geom.z = z;
-geom.rz = rz(z);
+% Define geometry:
+r  = r_b*(1 - exp(-a*z)) + r_t * exp(a*(z-L));
+rz = a*r_b*exp(-a*z) + a*r_t*exp(a*(z-L));
+g  = sqrt(1 + rz.^2);
 
 % Define the differentiation matrix:
 Dz = diag(1/2*ones(Nz-1,1),1) - diag(1/2*ones(Nz-1,1),-1);
@@ -45,14 +43,23 @@ Dz(1,1:3) = [-3/2 2 -1/2];
 Dz(end, end-2:end) = [1/2 -2 3/2];
 Dz = Dz/dz;
 
-diffmat.Dz = Dz;
-
 % Initial condition:
 q_0     = ones(size(z));
 q_0_int = q_0(2:end-1);
 
+% Build structures for solver: 
+diffmat.Dz = Dz;
+
+geom.z  = z;
+geom.rz = rz;
+geom.g  = g; 
+
+par.alpha = alpha;
+par.zp    = zp; 
+par.Tc    = Tc;
+
 %Define right hand side function:
-dQdt = @(t,q_int) dqdt_1D_snipsnap(t, q_int, diffmat, geom, par, bcType, dimType);
+dQdt = @(t,q_int) dqdt_1D_snipsnap(t, q_int, diffmat, geom, par, bcType);
 
 %Solve the system of ODEs that represents the PDE:
 tic
@@ -91,7 +98,7 @@ for i = 1:Nt
     end
 
     Q_full(:,i) = [Q_l; Q_int(i, :)'; Q_r];
-    V_full(:,i) = -1./sqrt(rz(z).^2 + 1).*par.alpha./Q_full(:,i).^3.*(Dz*Q_full(:,i));
+    V_full(:,i) = -(1./g).*alpha./Q_full(:,i).^3.*(Dz*Q_full(:,i));
 
 end
 
@@ -100,11 +107,11 @@ Q_ss = Q_full(:,end);
 V_ss = V_full(:,end);
 
 % Total number of cells:
-g = sqrt(1+geom.rz.^2);
-Total_Cells = 2*pi*trapz(z,r(z).*Q_ss.*g)
+Total_Cells = 2*pi*trapz(z,r.*Q_ss.*g)
 
 % Crypt renewal time:
-pos = find(z>=1);
+Arc_Length = cumtrapz(z,g);
+pos = find(Arc_Length>=1);
 Crypt_Renewal_Time = trapz(z(pos),g(pos)./V_ss(pos))/24
 
 % Steady state plot:
@@ -113,10 +120,10 @@ plot(z,Q_ss,'k', 'LineWidth',5);
 hold on
 plot(z,V_ss,'k:','linewidth',5)
 set(gca,'fontsize',16)
-title('Cell Density and Velocity','fontsize',25)
-xlabel('z','fontsize',20)
-ylabel('q(z,t) and v(z,t)','fontsize',20)
-legend('q(z,t)','v(z,t)','fontsize',18)
+title('Cell Density and Velocity','fontsize',25,'interpreter','latex')
+xlabel('$z$','fontsize',20,'interpreter','latex')
+ylabel('$q(z,t)$ and $v(z,t)$','fontsize',20,'interpreter','latex')
+legend('$q(z,t)$','fontsize',18,'interpreter','latex')
 grid on
 grid minor
 xlim([0 L])
