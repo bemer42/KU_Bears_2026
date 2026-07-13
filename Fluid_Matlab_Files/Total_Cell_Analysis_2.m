@@ -2,14 +2,15 @@
 close all; clear; clc
 
 % gamma vec
-Ngamma = 3;
+Ngamma = 10;
 gamma_vec = logspace(-3, -1, Ngamma); 
 
-Nzp = 3;
+% zp vec
+Nzp = 10;
 zp_vec = linspace(0.1, 0.9, Nzp);   
 
 TC_Storage = zeros(Ngamma, Nzp);
-bcType = "NbDt";                     
+bcType = "DbDt";                     
 
 % nested loop
 for i = 1:Ngamma
