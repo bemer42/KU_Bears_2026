@@ -11,7 +11,7 @@ bcType  = "NbDt";
 
 % Define parameters:
 alpha = 1.6406e3;
-zp    = 27; 
+zp    = 27;
 Tc    = 15.1954;
 
 % Define geometry parameters:
@@ -47,15 +47,15 @@ Dz = Dz/dz;
 q_0     = ones(size(z));
 q_0_int = q_0(2:end-1);
 
-% Build structures for solver: 
+% Build structures for solver:
 diffmat.Dz = Dz;
 
 geom.z  = z;
 geom.rz = rz;
-geom.g  = g; 
+geom.g  = g;
 
 par.alpha = alpha;
-par.zp    = zp; 
+par.zp    = zp;
 par.Tc    = Tc;
 
 %Define right hand side function:
@@ -108,6 +108,7 @@ V_ss = V_full(:,end);
 
 % Total number of cells:
 Total_Cells = 2*pi*trapz(z,r.*Q_ss.*g)
+Prolif_Cells = 2*pi*trapz(z,r.*Q_ss.*(z<zp).*g)
 
 % Crypt renewal time:
 Arc_Length = cumtrapz(z,g);
@@ -116,18 +117,18 @@ Crypt_Renewal_Time = trapz(z(pos),g(pos)./V_ss(pos))/24
 
 % Steady state plot:
 figure(1)
-plot(z,Q_ss,'k', 'LineWidth',5);
+plot(z,Q_ss,'k', 'LineWidth',10);
 hold on
-plot(z,V_ss,'k:','linewidth',5)
-set(gca,'fontsize',16)
-title('Cell Density and Velocity','fontsize',25,'interpreter','latex')
-xlabel('$z$','fontsize',20,'interpreter','latex')
-ylabel('$q(z,t)$ and $v(z,t)$','fontsize',20,'interpreter','latex')
-legend('$q(z,t)$','fontsize',18,'interpreter','latex')
+plot(z,V_ss,'k:','linewidth',10)
+set(gca,'fontsize',42)
+title('Cell Density and Velocity','fontsize',55,'interpreter','latex')
+xlabel('$z$','fontsize',50,'interpreter','latex')
+ylabel('$q_s(z)$ and $v_s(z)$','fontsize',50,'interpreter','latex')
+legend('$q_s(z)$','$v_s(z)$','fontsize',50,'interpreter','latex')
 grid on
 grid minor
 xlim([0 L])
-ylim([min(min([Q_ss; V_ss]))-.5 max(max([Q_ss; V_ss]))+.5])
+ylim([min(min([Q_ss; V_ss])) max(max([Q_ss; V_ss]))+.5])
 
 
 %% Animation:
@@ -141,11 +142,11 @@ for i = 1:dt:Nt
     plot(z,Q, 'k', 'LineWidth',5);
     hold on
     plot(z,V,'k:','linewidth',5)
-    set(gca,'fontsize',16)
-    title('Cell Density and Velocity','fontsize',25)
-    xlabel('z','fontsize',20)
-    ylabel('q(z,t) and v(z,t)','fontsize',20)
-    legend('q(z,t)','v(z,t)','fontsize',18)
+    set(gca,'fontsize',42)
+    title('Cell Density and Velocity','fontsize',55,'interpreter','latex')
+    xlabel('$z$','fontsize',50,'interpreter','latex')
+    ylabel('$q(z,t)$ and $v(z,t)$','fontsize',50,'interpreter','latex')
+    legend('$q(z,t)$','$v(z,t)$','fontsize',50,'interpreter','latex')
     grid on
     grid minor
     xlim([0 L])
@@ -159,8 +160,7 @@ end
 %% Animation on crypt domain
 dt = round(.1*Nt);
 theta = linspace(0,2*pi,Nz);
-r_plot = r(z);
-[T,R] = meshgrid(theta,r_plot);
+[T,R] = meshgrid(theta,r);
 
 X_plot = R.*cos(T);
 Y_plot = R.*sin(T);
@@ -172,13 +172,23 @@ for k = 1:dt:Nt
 
     figure(3)
     surf(X_plot,Y_plot,Z_plot,Q_dens')
+    set(gca,'fontsize',42)
+    title('Cell Density on Crypt','fontsize',55,'interpreter','latex')
+    xlabel('$x$','fontsize',50,'interpreter','latex')
+    ylabel('$y$','fontsize',50,'interpreter','latex')
+    zlabel('$z$','fontsize',50,'interpreter','latex')
+    legend('$q_s(z)$','fontsize',50,'interpreter','latex')
+    grid on
+    grid minor
+    box on
     shading interp
     colormap turbo
     colorbar
-    xlim([-30 30])
-    ylim([-30 30])
+    lighting gouraud
+    xlim([-40 40])
+    ylim([-40 40])
     zlim([0 80])
-    caxis([1 1.5])
+    caxis([1 1.1])
     if k == 1
         pause
     end

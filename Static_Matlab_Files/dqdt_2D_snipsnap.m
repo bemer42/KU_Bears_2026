@@ -39,7 +39,7 @@ t2 = Dz(end,end-2); t1 = Dz(end,end-1); t0 = Dz(end,end);
 
         % Coefficients at that boundary column
         Cz  = spdiags(alpha_z*(Rth(:,jB).^2 + R(:,jB).^2), 0, Nth, Nth);
-        Cth = spdiags(alpha_z*(Rth(:,jB).*Rz(:,jB)),      0, Nth, Nth);
+        Cth = spdiags(alpha_z*(Rth(:,jB).*Rz(:,jB)), 0, Nth, Nth);
 
         % Enforce (numerator of Flux_z)=0:
         %   Cz*(a0*qB + a1*q1 + a2*q2) - Cth*(Dth*qB) = 0

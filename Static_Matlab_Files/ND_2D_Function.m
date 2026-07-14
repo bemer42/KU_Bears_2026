@@ -1,0 +1,189 @@
+function [C,P] = ND_2D_Function(gamma_th, gamma_z, Zp_hat, bcType)
+
+% Predefine structures:
+geom_hat    = struct();
+diffmat_hat = struct();
+par_hat     = struct();
+
+% -------------------------
+%  Dimensional parameters
+% -------------------------
+Tc  = 15.1954;
+L   = 78.8783;
+ell = 1;
+
+% -------------------------
+% Geometry parameters:
+% -------------------------
+r_b  = 41/2/pi;
+r_t  = 10/pi;
+a    = 0.3;
+
+% -------------------------
+%  Nondimensional groups
+% -------------------------
+epsilon = r_b/L;
+
+% -------------------------
+%  Time discretization
+% -------------------------
+Nt        = 7e3;
+t_hat_0   = 0;
+t_hat_end = 5e1*log(2)./Tc;
+t_hat     = linspace(t_hat_0,t_hat_end,Nt);
+
+% -------------------------
+%  Theta grid
+% -------------------------
+Nth    = 5e1;
+th_0   = 0;
+th_end = 2*pi;
+th     = linspace(th_0, th_end, Nth)';
+dth    = th(2) - th(1);
+
+% -------------------------
+%  z-hat grid in [0,1]
+% -------------------------
+Nz     = 5e1;
+beta   = 3;
+xi     = linspace(0,1,Nz)';
+z_hat  = 0.5*(1 + tanh(beta*(2*xi-1))/tanh(beta));
+
+% Create mesh grids
+[Z_hat, Th] = meshgrid(z_hat, th);
+Z           = L*Z_hat;
+
+% -------------------------
+%  Differentiation in theta
+% -------------------------
+Dth = spdiags([-1/2*ones(Nth,1) 1/2*ones(Nth,1)],[-1 1],Nth,Nth);
+Dth(1,end) = -1/2;
+Dth(end,1) =  1/2;
+Dth = Dth/dth;
+
+% -------------------------
+%  Differentiation in z
+% -------------------------
+Dz = diffmat_nonuniform(z_hat);
+
+% -------------------------
+%  Nondimensional geometry on (theta, zhat)
+% -------------------------
+R_hat   = (1 - exp(-a*L*Z_hat)) + (r_t/r_b)*exp(a*L*(Z_hat - 1));
+Rth_hat = 0*Th;
+Rz_hat  = a*L*exp(-a*L*Z_hat) + (r_t/r_b)*a*L*exp(a*L*(Z_hat - 1));
+S_hat   = sqrt(Rth_hat.^2 + R_hat.^2 .* (1 + epsilon^2*(Rz_hat.^2)));
+
+% physical radius for plotting on crypt:
+Rphys = r_b * R_hat;
+Gphys = sqrt( (r_b*Rth_hat).^2 + (Rphys).^2 .* (1 + (epsilon*Rz_hat).^2) );
+
+% -------------------------
+%  Structures for RHS:
+% -------------------------
+diffmat_hat.Dth  = Dth;
+diffmat_hat.Dz   = Dz;
+
+geom_hat.Th      = Th;
+geom_hat.Z_hat   = Z_hat;
+geom_hat.Zphys   = Z;
+geom_hat.R_hat   = R_hat;
+geom_hat.Rth_hat = Rth_hat;
+geom_hat.Rz_hat  = Rz_hat;
+geom_hat.S_hat   = S_hat;
+geom_hat.Rphys   = Rphys;
+geom_hat.Gphys   = Gphys;
+
+par_hat.gamma_th = gamma_th;
+par_hat.gamma_z  = gamma_z;
+par_hat.epsilon  = epsilon;
+par_hat.ell      = ell;
+par_hat.Zp_hat   = Zp_hat;
+
+% -------------------------
+%  Initial condition
+% % -------------------------
+% f = @(th, z_hat) 1 + exp(-(z_hat - Zp_hat).^2/.1 - (th - pi/2).^2/.2);
+f = @(th,z_hat) ones(size(Th));
+Q_hat_0 = f(Th, Z_hat);
+Q_hat_0_int = Q_hat_0(:,2:end-1);
+q_hat_0_int = Q_hat_0_int(:);
+
+% -------------------------
+%  ND RHS handle and solve
+% -------------------------
+dQhatdt = @(t_hat, q_hat_int) ND_dqdt_2D_snipsnap(t_hat, q_hat_int, diffmat_hat, geom_hat, par_hat, bcType);
+
+options = odeset('Stats','off','MaxStep',inf);
+[t_hat, q_hat_int] = ode15s(dQhatdt, t_hat, q_hat_0_int, options);
+
+% -------------------------
+%  Expand interior back to full Q for each time point 
+% -------------------------
+Qhat_full = zeros(Nt, Nth*Nz);
+
+% One-sided zhat-derivative stencil coefficients from Dz
+b0 = Dz(1,1);       b1 = Dz(1,2);       b2 = Dz(1,3);
+t2 = Dz(end,end-2); t1 = Dz(end,end-1); t0 = Dz(end,end);
+
+nz = Nz - 2;
+
+for i = 1:Nt
+
+    Q_int = reshape(q_hat_int(i,:), Nth, nz);
+
+    Q = zeros(Nth, Nz);
+    Q(:,2:Nz-1) = Q_int;
+
+    % Apply BCs (ND IBVP: usually bottom Neumann, top Dirichlet qhat=ell)
+    switch bcType
+        case "NbDt"
+            Q(:,1)   = solveFluxNeumannAtBoundary(1,  b0, b1, b2, Q(:,2),Q(:,3),diffmat_hat, geom_hat);
+            Q(:,end) = ell;
+        case "NbNt"
+            Q(:,1)   = solveFluxNeumannAtBoundary(1,  b0, b1, b2, Q(:,2),Q(:,3),diffmat_hat, geom_hat);
+            Q(:,end) = solveFluxNeumannAtBoundary(Nz, t0, t1, t2, Q(:,end-1), Q(:,end-2),diffmat_hat, geom_hat);
+        case "DbNt"
+            Q(:,1)   = ell;  % if you really want Dirichlet at the base in ND units
+            Q(:,end) = solveFluxNeumannAtBoundary(Nz, t0, t1, t2, Q(:,end-1), Q(:,end-2),diffmat_hat, geom_hat);
+        case "DbDt"
+            Q(:,1)   = ell;
+            Q(:,end) = ell;
+        otherwise
+            error('bcType must be one of: "NbDt", "NbNt", "DbNt", "DbDt".');
+    end
+
+    Qhat_full(i,:) = Q(:);
+end
+
+% -------------------------
+%  Steady state analysis 
+% -------------------------
+Qhat_ss = reshape(Qhat_full(end,:), Nth, Nz);
+
+C = (r_b*L/ell)*trapz(z_hat, trapz(th, Qhat_ss .* S_hat));
+P = (r_b*L/ell)*trapz(z_hat, trapz(th, Qhat_ss .* (Z_hat < Zp_hat) .* S_hat));
+
+% -------------------------
+%  Velocity field (ND) for plotting arrows
+% -------------------------
+% [Vth_ss, Vz_hat_ss] = ND_velocityField_FVconsistent_2D(Qhat_ss, diffmat_hat, geom_hat, par_hat, bcType);
+
+% Helper
+% Bottom/top Neumann (Flux_z = 0) for boundary column
+function qB = solveFluxNeumannAtBoundary(jB, a0, a1, a2, q1, q2, diffmat_hat, geom_hat)
+R_hat   = geom_hat.R_hat; 
+Rth_hat = geom_hat.Rth_hat; 
+Rz_hat  = geom_hat.Rz_hat; 
+Dth     = diffmat_hat.Dth;
+Nth     = length(Dth); 
+Cz  = spdiags((Rth_hat(:,jB).^2 + R_hat(:,jB).^2), 0, Nth, Nth);
+Cth = spdiags((Rth_hat(:,jB).*Rz_hat(:,jB)),    0, Nth, Nth);
+A = a0*Cz - Cth*Dth;
+b = -Cz*(a1*q1 + a2*q2);
+qB = A \ b;
+end
+
+
+
+end
