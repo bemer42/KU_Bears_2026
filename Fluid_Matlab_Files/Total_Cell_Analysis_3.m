@@ -1,10 +1,10 @@
 %% Total Cell Analysis 3
 close all; clear; clc
 
-Nalpha = 5;
+Nalpha = 3;
 alpha_z_vec = logspace(-6, -4, Nalpha); 
 
-Nzp = 5;
+Nzp = 3;
 zp_vec = linspace(10, 70, Nzp);        
 
 TC_Storage = zeros(Nalpha, Nzp);

@@ -1,20 +1,14 @@
-%% Cell movement PDE in one dimension along crypt shape
-clear; close all; clc
+function [C,P,R] = ND_1D_Function(gamma,zp_hat,bcType)
 
 % Predefine structures:
 geom_hat    = struct();
 diffmat_hat = struct();
 par_hat     = struct();
 
-% Define BCs and non-dimensional pde:
-bcType  = "NbDt";
-
 % Define parameters:
 Tc     = 15.1594; 
 L      = 78.8783; 
 ell    = 1; 
-zp_hat = 27/L; 
-gamma  = .1730; 
 
 % Define geometry parameters:
 r_b     = 41/2/pi;
@@ -23,9 +17,9 @@ a       = 0.3;
 epsilon = r_b/L; 
 
 % Discretize time:
-Nt        = 7e3;
+Nt        = 1e3;
 t_hat_0   = 0;
-t_hat_end = 5e3*log(2)./Tc;
+t_hat_end = 5e5*log(2)./Tc;
 t_hat     = linspace(t_hat_0,t_hat_end,Nt);
 
 % Discretize space:
@@ -65,10 +59,8 @@ par_hat.ell    = ell;
 dQhatdt = @(t,q_hat_int) ND_dqdt_1D_snipsnap(t, q_hat_int, diffmat_hat, geom_hat, par_hat, bcType);
 
 %Solve the system of ODEs that represents the PDE:
-tic
-options = odeset('Stats', 'on');
+options = odeset('Stats', 'off');
 [t_hat,Qhat_int] = ode15s(dQhatdt, t_hat, q_hat_0_int, options);
-toc
 
 % Extend to full Q:
 Qhat_full = zeros(Nz,Nt);
@@ -110,80 +102,14 @@ Qhat_ss = Qhat_full(:,end);
 Vhat_ss = Vhat_full(:,end);
 
 % Total number of cells:
-Total_Cells = (r_b*L./ell).*2*pi*trapz(z_hat,r_hat.*Qhat_ss.*g_hat)
+C = (L.^2*epsilon./ell).*2*pi*trapz(z_hat,r_hat.*Qhat_ss.*g_hat);
+P = (L.^2*epsilon./ell).*2*pi*trapz(z_hat,r_hat.*Qhat_ss.*(z_hat<zp_hat).*g_hat);
 
 % Crypt renewal time:
 pos = find(z_hat>=1/L);
-Crypt_Renewal_Time = (Tc/log(2)).*trapz(z_hat(pos),g_hat(pos)./Vhat_ss(pos))/24
-
-% Steady state plot:
-figure(1)
-plot(z_hat,Qhat_ss,'k', 'LineWidth',5);
-hold on
-plot(z_hat,Vhat_ss,'k:','linewidth',5)
-set(gca,'fontsize',16)
-title('Cell Density and Velocity','fontsize',25,'interpreter','latex')
-xlabel('$\hat{z}$','fontsize',20,'interpreter','latex')
-ylabel('$\hat{q}(\hat{z},\hat{t})$ and $\hat{v}(\hat{z},\hat{t})$','fontsize',20,'interpreter','latex')
-legend('$\hat{q}(\hat{z},\hat{t})$','$\hat{v}(\hat{z},\hat{t})$','fontsize',18,'interpreter','latex')
-grid on
-grid minor
-xlim([0 1])
-ylim([min(min([Qhat_ss; Vhat_ss]))-.5 max(max([Qhat_ss; Vhat_ss]))+.5])
-
-
-%% Animation:
-dt = round(.01*Nt);
-for i = 1:dt:Nt
-
-    Qhat = Qhat_full(:,i);
-    Vhat = Vhat_full(:,i);
-
-    figure(2)
-    plot(z_hat,Qhat, 'k', 'LineWidth',5); %changed z to z_hat?
-    hold on
-    plot(z_hat,Vhat,'k:','linewidth',5) %here too?
-    set(gca,'fontsize',16)
-    title('Cell Density and Velocity','fontsize',25,'interpreter','latex')
-    xlabel('$\hat{z}$','fontsize',20,'interpreter','latex')
-    ylabel('$\hat{q}(\hat{z},\hat{t})$ and $\hat{v}(\hat{z},\hat{t})$','fontsize',20,'interpreter','latex')
-    legend('$\hat{q}(\hat{z},\hat{t})$','$\hat{v}(\hat{z},\hat{t})$','fontsize',18,'interpreter','latex')
-    grid on
-    grid minor
-    xlim([0 1])
-    ylim([min(min([Qhat_ss; Vhat_ss]))-.5 max(max([Qhat_ss; Vhat_ss]))+.5]) %changed q to qhat?
-    if i == 1
-        pause
-    end
-    hold off;
-end
-
-%% Animation on crypt domain
-dt = round(.1*Nt);
-theta = linspace(0,2*pi,Nz);
-r_plot = r(z);
-[T,R] = meshgrid(theta,r_plot);
-
-X_plot = R.*cos(T);
-Y_plot = R.*sin(T);
-Z_plot = repmat(z,1,Nz);
-
-for k = 1:dt:Nt
-
-    Q_dens = repmat(Q_full(:,k)',Nz,1);
-
-    figure(3)
-    surf(X_plot,Y_plot,Z_plot,Q_dens')
-    shading interp
-    colormap turbo
-    colorbar
-    xlim([-30 30])
-    ylim([-30 30])
-    zlim([0 80])
-    caxis([1 1.5])
-    if k == 1
-        pause
-    end
+R = (Tc/log(2)).*trapz(z_hat(pos),g_hat(pos)./Vhat_ss(pos))/24;
 
 end
+
+
 

@@ -1,4 +1,4 @@
-function Total_Cells = nd_cell_movement(gamma, zp_hat, bcType)
+function [Total_Cells, Prolif_Cells, Crypt_Renewal_Time] = nd_cell_movement(gamma, zp_hat, bcType)
 
 
 
@@ -9,7 +9,7 @@ diffmat_hat = struct();
 par_hat     = struct();
 
 % Define BCs and non-dimensional pde:
-bcType  = "NbDt";
+%bcType  = "NbDt"
 
 % Define parameters:
 Tc     = 15.1594; 
@@ -112,11 +112,11 @@ Qhat_ss = Qhat_full(:,end);
 Vhat_ss = Vhat_full(:,end);
 
 % Total number of cells:
-Total_Cells = (L.^2*epsilon./ell).*2*pi*trapz(z_hat,r_hat.*Qhat_ss.*g_hat)
-Prolif_Cells = (L.^2*epsilon./ell).*2*pi*trapz(z_hat,r_hat.*(Qhat_ss.*(z_hat<zp_hat)).*g_hat)
+Total_Cells = (L.^2*epsilon./ell).*2*pi*trapz(z_hat,r_hat.*Qhat_ss.*g_hat);
+Prolif_Cells = (L.^2*epsilon./ell).*2*pi*trapz(z_hat,r_hat.*(Qhat_ss.*(z_hat<zp_hat)).*g_hat);
 
 % Crypt renewal time:
 pos = find(z_hat>=1/L);
-Crypt_Renewal_Time = (Tc/log(2)).*trapz(z_hat(pos),g_hat(pos)./Vhat_ss(pos))/24
+Crypt_Renewal_Time = (Tc/log(2)).*trapz(z_hat(pos),g_hat(pos)./Vhat_ss(pos))/24;
 
 
