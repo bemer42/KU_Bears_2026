@@ -75,8 +75,8 @@ for c = -30 : 150
     zlim([-2 80])
     if c == -30
         pause(1)
-%     else
-%         drawnow
+    else
+         drawnow
     end
     
 

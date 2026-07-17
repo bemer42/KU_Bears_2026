@@ -64,14 +64,14 @@ surf(ZP_mesh, log10(GAMMA_mesh), TC_Storage)
 hold on
 z_TC = max(TC_Storage(:)) + 10; 
 
-
+% Total Cell lines (White)
 h_tc(1) = plot3(zp_tc_L, gamma_tc_L, z_TC * ones(size(zp_tc_L)), 'w--', 'LineWidth', 2.5);
 h_tc(2) = plot3(zp_tc_H, gamma_tc_H, z_TC * ones(size(zp_tc_H)), 'w-', 'LineWidth', 2.5);
 
 shading interp; colormap turbo; colorbar; grid on; grid minor;
 view(2)
 
-
+% LaTeX Styling
 set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 12)
 xlabel('Upper Proliferation Boundary ($z_p$)', 'Interpreter', 'latex', 'FontSize', 14)
 ylabel('$\log_{10}(\gamma)$', 'Interpreter', 'latex', 'FontSize', 14)
@@ -81,24 +81,24 @@ lgd2 = legend(h_tc, {['Low: ' num2str(tc_low)], ['High: ' num2str(tc_high)]}, 'L
 set(lgd2, 'Interpreter', 'latex', 'FontSize', 11)
 
 
-%% Prolif Cells
+%% Figure 3: Prolif Cells with Total Cells overlay (4 Lines)
 figure(3)
 surf(ZP_mesh, log10(GAMMA_mesh), PR_Storage)
 hold on
 z_PR = max(PR_Storage(:)) + 10;
 
-
+% Prolif lines (Magenta)
 h_pr(1) = plot3(zp_pr_L, gamma_pr_L, z_PR * ones(size(zp_pr_L)), 'm--', 'LineWidth', 2.5);
 h_pr(2) = plot3(zp_pr_H, gamma_pr_H, z_PR * ones(size(zp_pr_H)), 'm-', 'LineWidth', 2.5);
 
-
+% Overlay Total Cell lines (White)
 h_pr(3) = plot3(zp_tc_L, gamma_tc_L, z_PR * ones(size(zp_tc_L)), 'w--', 'LineWidth', 2.5);
 h_pr(4) = plot3(zp_tc_H, gamma_tc_H, z_PR * ones(size(zp_tc_H)), 'w-', 'LineWidth', 2.5);
 
 shading interp; colormap turbo; colorbar; grid on; grid minor;
 view(2)
 
-
+% LaTeX Styling
 set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 12)
 xlabel('Upper Proliferation Boundary ($z_p$)', 'Interpreter', 'latex', 'FontSize', 14)
 ylabel('$\log_{10}(\gamma)$', 'Interpreter', 'latex', 'FontSize', 14)
@@ -113,24 +113,24 @@ lgd3 = legend(h_pr, {...
 set(lgd3, 'Interpreter', 'latex', 'FontSize', 11)
 
 
-%% Crypt Renewal
+%% Figure 4: Crypt Renewal with Total Cells overlay (4 Lines)
 figure(4)
 surf(ZP_mesh, log10(GAMMA_mesh), CR_Storage)
 hold on
 z_CR = max(CR_Storage(:)) + 1; 
 
-
+% Renewal lines (Cyan)
 h_cr(1) = plot3(zp_cr_L, gamma_cr_L, z_CR * ones(size(zp_cr_L)), 'c--', 'LineWidth', 2.5);
 h_cr(2) = plot3(zp_cr_H, gamma_cr_H, z_CR * ones(size(zp_cr_H)), 'c-', 'LineWidth', 2.5);
 
-
+% Overlay Total Cell lines (White)
 h_cr(3) = plot3(zp_tc_L, gamma_tc_L, z_CR * ones(size(zp_tc_L)), 'w--', 'LineWidth', 2.5);
 h_cr(4) = plot3(zp_tc_H, gamma_tc_H, z_CR * ones(size(zp_tc_H)), 'w-', 'LineWidth', 2.5);
 
 shading interp; colormap turbo; colorbar; grid on; grid minor;
 view(2)
 
-
+% LaTeX Styling
 set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 12)
 xlabel('Upper Proliferation Boundary ($z_p$)', 'Interpreter', 'latex', 'FontSize', 14)
 ylabel('$\log_{10}(\gamma)$', 'Interpreter', 'latex', 'FontSize', 14)
@@ -145,35 +145,20 @@ lgd4 = legend(h_cr, {...
 set(lgd4, 'Interpreter', 'latex', 'FontSize', 11)
 
 
-%% Combined Plot
+%% Figure 5: Combined Plot (6 Lines + Shaded Feasible Region)
 figure(5)
 hold on
 z_comb = max(TC_Storage(:)) + 15; 
 
-%% 1. Interpolate to a Fine Grid for Seamless Shading
-% Create a high-resolution mesh (200x200) for smooth boundary matching
-zp_fine = linspace(min(zp_vec), max(zp_vec), 200);
-gamma_log_fine = linspace(min(log10(gamma_vec)), max(log10(gamma_vec)), 200);
-[ZP_fine, GAMMA_log_fine] = meshgrid(zp_fine, gamma_log_fine);
+% 1. Calculate & Shade the Feasible Region
+feasible_region = (TC_Storage >= tc_low) & (TC_Storage <= tc_high) & ...
+                  (PR_Storage >= pr_low) & (PR_Storage <= pr_high) & ...
+                  (CR_Storage >= cr_low) & (CR_Storage <= cr_high);
 
-% Interpolate original data onto the fine grid
-TC_fine = interp2(ZP_mesh, log10(GAMMA_mesh), TC_Storage, ZP_fine, GAMMA_log_fine, 'linear');
-PR_fine = interp2(ZP_mesh, log10(GAMMA_mesh), PR_Storage, ZP_fine, GAMMA_log_fine, 'linear');
-CR_fine = interp2(ZP_mesh, log10(GAMMA_mesh), CR_Storage, ZP_fine, GAMMA_log_fine, 'linear');
-
-% Calculate the logical mask on the high-resolution grid
-feasible_region_fine = (TC_fine >= tc_low) & (TC_fine <= tc_high) & ...
-                       (PR_fine >= pr_low) & (PR_fine <= pr_high) & ...
-                       (CR_fine >= cr_low) & (CR_fine <= cr_high);
-
-% Draw the smooth shaded region
-if any(feasible_region_fine(:))
-    [~, h_shade] = contourf(ZP_fine, GAMMA_log_fine, double(feasible_region_fine), [0.5 0.5]);
-    
-    % Soft green shading with no border
+if any(feasible_region(:))
+    [~, h_shade] = contourf(ZP_mesh, log10(GAMMA_mesh), double(feasible_region), [0.5 0.5]);
     set(h_shade, 'FaceColor', [0.4660, 0.6740, 0.1880], 'FaceAlpha', 0.25, 'EdgeColor', 'none');
     
-    % Push the shading patch to the same Z-plane as the lines
     drawnow;
     try
         h_shade.ContourParameters.ZData = z_comb * ones(size(h_shade.ContourParameters.XData));
@@ -181,7 +166,7 @@ if any(feasible_region_fine(:))
     end
 end
 
-%% 2. Plot the 6 Boundary Lines
+% 2. Plot the 6 Boundary Lines
 h_all(1) = plot3(zp_tc_L, gamma_tc_L, z_comb*ones(size(zp_tc_L)), 'k--', 'LineWidth', 3);
 h_all(2) = plot3(zp_tc_H, gamma_tc_H, z_comb*ones(size(zp_tc_H)), 'k-', 'LineWidth', 3);
 
@@ -209,7 +194,7 @@ labels = {...
     ['Renewal (High: ' num2str(cr_high) ' Days)']...
 };
 
-if any(feasible_region_fine(:))
+if any(feasible_region(:))
     lgd5 = legend([h_all, h_shade], [labels, {'Feasible Region (All Targets Met)'}], 'Location', 'northeastoutside');
 else
     lgd5 = legend(h_all, labels, 'Location', 'northeastoutside');
