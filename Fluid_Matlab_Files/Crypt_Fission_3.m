@@ -9,7 +9,7 @@ v = linspace(0, 1, N_v)';
 [U_mesh, V_mesh] = meshgrid(u, v);
 
 % Crypt Geometry
-L = 78;              
+L = 78;                
 r_b = 41 / (2 * pi); 
 r_t = 10 / pi;       
 alpha = 0.3;       
@@ -20,7 +20,7 @@ R_z = r_b * (1 - exp(-alpha * Z)) + r_t * exp(alpha * (Z - L));
 
 % Plot
 figure(1)
-for c = -20 : 120
+for c = -10 : 120
    
     A = 1 ./ (1 + exp(0.15 * (Z - c)));
     if c < 0
@@ -30,6 +30,8 @@ for c = -20 : 120
    
     b = R_z; 
     a = 0.90 * b .* A; 
+   % b = sqrt(R_z.^2 + R_z.*a);
+
     
     % Cassini
     r_sq = a.^2 .* cos(2 * U_mesh) + sqrt(b.^4 - a.^4 .* sin(2 * U_mesh).^2);

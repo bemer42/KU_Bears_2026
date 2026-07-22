@@ -1,5 +1,14 @@
-%% Nondimensional Cell Movement 2D
-close all; clear; clc
+function Crypt_Renewal_Time = nd_cell_movement_2D_analysis(alpha_th, zp)
+
+if nargin < 1 || isempty(alpha_th)
+    alpha_z  = 1.6406e3;
+    alpha_th = alpha_z / 10;
+end
+if nargin < 2 || isempty(zp)
+    zp = 27;
+end
+
+alpha_z = 1.6406e3;
 
 % Predefine structures:
 geom_hat    = struct();
@@ -12,8 +21,8 @@ bcType = "NbDt";
 % -------------------------
 %  Dimensional parameters
 % -------------------------
-alpha_z  = 1.6406e3;
-alpha_th = alpha_z/10;
+%alpha_z  = 1.6406e3;
+%alpha_th = alpha_z/10;
 Tc       = 15.1954;
 zp       = 27;
 L        = 78.8783;
@@ -175,8 +184,8 @@ end
 % -------------------------
 Qhat_ss = reshape(Qhat_full(end,:), Nth, Nz);
 
-Total_Cells  = (r_b*L/ell)*trapz(z_hat, trapz(th, Qhat_ss .* S_hat))
-Prolif_Cells = (r_b*L/ell)*trapz(z_hat, trapz(th, Qhat_ss .* (Z_hat < Zp_hat) .* S_hat))
+Total_Cells  = (r_b*L/ell)*trapz(z_hat, trapz(th, Qhat_ss .* S_hat));
+Prolif_Cells = (r_b*L/ell)*trapz(z_hat, trapz(th, Qhat_ss .* (Z_hat < Zp_hat) .* S_hat));
 
 % -------------------------
 %  Velocity field (ND) for plotting arrows
@@ -186,114 +195,21 @@ Prolif_Cells = (r_b*L/ell)*trapz(z_hat, trapz(th, Qhat_ss .* (Z_hat < Zp_hat) .*
 % travel time
 [Rmean, R, theta0] = avgTravelTimeFromVectorField(th, z_hat, Vth_ss, Vz_hat_ss, ...
     'theta0', linspace(pi/2,3*pi/2,60), 'z0', z(2));
-Crypt_Renewal_Time = (Tc/log(2))* Rmean/24
-
-% -------------------------
-%  Steady state plot
-% -------------------------
-dm = 5;
-figure(1)
-surf(Th, Z_hat, Qhat_ss);
-hold on
-quiver3(Th(2:dm:end,2:dm:end-dm), Z_hat(2:dm:end,2:dm:end-dm), Qhat_ss(2:dm:end,2:dm:end-dm), ...
-        Vth_ss(2:dm:end,2:dm:end-dm), Vz_hat_ss(2:dm:end,2:dm:end-dm), zeros(size(Th(2:dm:end,2:dm:end-dm))), ...
-        1.0, 'color',[0.15 0.15 0.15], 'Linewidth',2.5, 'MaxHeadSize',.008);
-set(gca,'fontsize',42)
-title('ND Cell Density and Velocity','fontsize',55,'interpreter','latex')
-xlabel('$\theta$','fontsize',50,'interpreter','latex')
-ylabel('$\hat{z}$','fontsize',50,'interpreter','latex')
-zlabel('$\hat q(\theta,\hat{z})$ and $\vec{v}(\theta,\hat{z})$','fontsize',50,'interpreter','latex')
-grid on; grid minor; box on
-colormap turbo
-shading interp
-colorbar
-caxis([1 max(Qhat_ss(:))])
-xlim([0 2*pi])
-ylim([0 1])
-view([0 0 1])
-hold off
-
-%%  Animation 
-dtPlot = round(.05*Nt);
-dm = 5;
-
-for i = 1:dtPlot:Nt
-
-    Q = reshape(Qhat_full(i,:), Nth, Nz);
-    [Vth, Vz] = ND_velocityField_fromFlux(Q, diffmat_hat, geom_hat, par_hat);
-
-    figure(2)
-    surf(Th, Z, Q);
-    hold on
-    quiver3(Th(2:dm:end,2:dm:end-dm), Z(2:dm:end,2:dm:end-dm), Q(2:dm:end,2:dm:end-dm), ...
-        Vth(2:dm:end,2:dm:end-dm), Vz(2:dm:end,2:dm:end-dm), zeros(size(Th(2:dm:end,2:dm:end-dm))), ...
-        1.0, 'color',[0.15 0.15 0.15], 'Linewidth',2.5, 'MaxHeadSize',.008);
-
-    set(gca,'fontsize',42)
-    title('ND Cell Density and Velocity','fontsize',55,'interpreter','latex')
-    xlabel('$\theta$','fontsize',50,'interpreter','latex')
-    ylabel('$z$','fontsize',50,'interpreter','latex')
-    zlabel('$\hat q(\theta,z)$ and $\vec{v}(\theta,z)$','fontsize',50,'interpreter','latex')
-    grid on; grid minor; box on
-    colormap turbo
-    shading interp
-    colorbar
-    xlim([0 2*pi])
-    ylim([0 L])
-    view([0 0 1])
-
-    if i == 1
-        pause
-    end
-    hold off
-end
-
-%% -------------------------
-%  Plot on crypt domain (physical xyz, same as your last block)
-% -------------------------
-X_plot = Rphys.*cos(Th);
-Y_plot = Rphys.*sin(Th);
-Z_plot = Z;
-
-dtPlot2 = round(.1*Nt);
-
-for k = 1:dtPlot2:Nt
-
-    Q = reshape(Qhat_full(k,:),Nth,Nz);
-
-    figure(3)
-    surf(X_plot, Y_plot, Z_plot, Q)
-    set(gca,'fontsize',42)
-    title('ND Cell Density on Crypt','fontsize',55,'interpreter','latex')
-    xlabel('$x$','fontsize',50,'interpreter','latex')
-    ylabel('$y$','fontsize',50,'interpreter','latex')
-    zlabel('$z$','fontsize',50,'interpreter','latex')
-    grid on; grid minor; box on
-    shading interp
-    colormap turbo
-    colorbar
-    lighting gouraud
-    xlim([-40 40])
-    ylim([-40 40])
-    zlim([0 80])
-
-    if k == 1
-        pause
-    end
-end
-
+Crypt_Renewal_Time = (Tc/log(2))* Rmean/24;
 %% Helpers
 
 % Bottom/top Neumann (Flux_z = 0) for boundary column
-function qB = solveFluxNeumannAtBoundary(jB, a0, a1, a2, q1, q2, diffmat_hat, geom_hat)
-R_hat   = geom_hat.R_hat; 
-Rth_hat = geom_hat.Rth_hat; 
-Rz_hat  = geom_hat.Rz_hat; 
-Dth     = diffmat_hat.Dth;
-Nth     = length(Dth); 
-Cz  = spdiags((Rth_hat(:,jB).^2 + R_hat(:,jB).^2), 0, Nth, Nth);
-Cth = spdiags((Rth_hat(:,jB).*Rz_hat(:,jB)),    0, Nth, Nth);
-A = a0*Cz - Cth*Dth;
-b = -Cz*(a1*q1 + a2*q2);
-qB = A \ b;
+    function qB = solveFluxNeumannAtBoundary(jB, a0, a1, a2, q1, q2, diffmat_hat, geom_hat)
+        R_hat   = geom_hat.R_hat; 
+        Rth_hat = geom_hat.Rth_hat; 
+        Rz_hat  = geom_hat.Rz_hat; 
+        Dth     = diffmat_hat.Dth;
+        Nth     = length(Dth); 
+        Cz  = spdiags((Rth_hat(:,jB).^2 + R_hat(:,jB).^2), 0, Nth, Nth);
+        Cth = spdiags((Rth_hat(:,jB).*Rz_hat(:,jB)),    0, Nth, Nth);
+        A = a0*Cz - Cth*Dth;
+        b = -Cz*(a1*q1 + a2*q2);
+        qB = A \ b;
+    end
+
 end

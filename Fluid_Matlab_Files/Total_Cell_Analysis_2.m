@@ -56,7 +56,7 @@ set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 12)
 xlabel('Upper Proliferation Boundary ($z_p$)', 'Interpreter', 'latex', 'FontSize', 14)
 ylabel('$\log_{10}(\gamma)$', 'Interpreter', 'latex', 'FontSize', 14)
 zlabel('Total Cell Count', 'Interpreter', 'latex', 'FontSize', 14)
-
+view(2)
 
 %% Total Cells Contours
 figure(2)
@@ -83,18 +83,22 @@ set(lgd2, 'Interpreter', 'latex', 'FontSize', 11)
 
 %% Prolif Cells
 figure(3)
-surf(ZP_mesh, log10(GAMMA_mesh), PR_Storage)
-hold on
+
+
 z_PR = max(PR_Storage(:)) + 10;
 
 
-h_pr(1) = plot3(zp_pr_L, gamma_pr_L, z_PR * ones(size(zp_pr_L)), 'm--', 'LineWidth', 2.5);
-h_pr(2) = plot3(zp_pr_H, gamma_pr_H, z_PR * ones(size(zp_pr_H)), 'm-', 'LineWidth', 2.5);
+plot3(zp_pr_L, gamma_pr_L, z_PR * ones(size(zp_pr_L)), 'm--', 'LineWidth', 2.5);
+hold on
+plot3(zp_pr_H, gamma_pr_H, z_PR * ones(size(zp_pr_H)), 'm-', 'LineWidth', 2.5);
 
+surf(ZP_mesh, log10(GAMMA_mesh), PR_Storage)
 
 h_pr(3) = plot3(zp_tc_L, gamma_tc_L, z_PR * ones(size(zp_tc_L)), 'w--', 'LineWidth', 2.5);
 h_pr(4) = plot3(zp_tc_H, gamma_tc_H, z_PR * ones(size(zp_tc_H)), 'w-', 'LineWidth', 2.5);
 
+%h_pr(3) = [];
+%h_pr(4) = [];
 shading interp; colormap turbo; colorbar; grid on; grid minor;
 view(2)
 
@@ -104,25 +108,26 @@ xlabel('Upper Proliferation Boundary ($z_p$)', 'Interpreter', 'latex', 'FontSize
 ylabel('$\log_{10}(\gamma)$', 'Interpreter', 'latex', 'FontSize', 14)
 zlabel('Proliferating Cells', 'Interpreter', 'latex', 'FontSize', 14)
 
-lgd3 = legend(h_pr, {...
+lgd3 = legend({...
     ['Prolif Low: ' num2str(pr_low)], ...
     ['Prolif High: ' num2str(pr_high)], ...
-    ['Total Low: ' num2str(tc_low)], ...
-    ['Total High: ' num2str(tc_high)]...
+   
 }, 'Location', 'best');
 set(lgd3, 'Interpreter', 'latex', 'FontSize', 11)
 
 
 %% Crypt Renewal
 figure(4)
-surf(ZP_mesh, log10(GAMMA_mesh), CR_Storage)
-hold on
+
 z_CR = max(CR_Storage(:)) + 1; 
 
 
-h_cr(1) = plot3(zp_cr_L, gamma_cr_L, z_CR * ones(size(zp_cr_L)), 'c--', 'LineWidth', 2.5);
-h_cr(2) = plot3(zp_cr_H, gamma_cr_H, z_CR * ones(size(zp_cr_H)), 'c-', 'LineWidth', 2.5);
+plot3(zp_cr_L, gamma_cr_L, z_CR * ones(size(zp_cr_L)), 'c--', 'LineWidth', 2.5);
 
+hold on
+plot3(zp_cr_H, gamma_cr_H, z_CR * ones(size(zp_cr_H)), 'c-', 'LineWidth', 2.5);
+
+surf(ZP_mesh, log10(GAMMA_mesh), CR_Storage)
 
 h_cr(3) = plot3(zp_tc_L, gamma_tc_L, z_CR * ones(size(zp_tc_L)), 'w--', 'LineWidth', 2.5);
 h_cr(4) = plot3(zp_tc_H, gamma_tc_H, z_CR * ones(size(zp_tc_H)), 'w-', 'LineWidth', 2.5);
@@ -136,11 +141,10 @@ xlabel('Upper Proliferation Boundary ($z_p$)', 'Interpreter', 'latex', 'FontSize
 ylabel('$\log_{10}(\gamma)$', 'Interpreter', 'latex', 'FontSize', 14)
 zlabel('Crypt Renewal Time (Days)', 'Interpreter', 'latex', 'FontSize', 14)
 
-lgd4 = legend(h_cr, {...
+lgd4 = legend( {...
     ['Renewal Low: ' num2str(cr_low) ' Days'], ...
     ['Renewal High: ' num2str(cr_high) ' Days'], ...
-    ['Total Low: ' num2str(tc_low)], ...
-    ['Total High: ' num2str(tc_high)]...
+  
 }, 'Location', 'best');
 set(lgd4, 'Interpreter', 'latex', 'FontSize', 11)
 
@@ -212,6 +216,6 @@ labels = {...
 if any(feasible_region_fine(:))
     lgd5 = legend([h_all, h_shade], [labels, {'Feasible Region (All Targets Met)'}], 'Location', 'northeastoutside');
 else
-    lgd5 = legend(h_all, labels, 'Location', 'northeastoutside');
+    lgd5 = legend(h_all, labels, 'Location', 'northeast');
 end
 set(lgd5, 'Interpreter', 'latex', 'FontSize', 11)

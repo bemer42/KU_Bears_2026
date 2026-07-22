@@ -1,44 +1,69 @@
-% Crypt Geometry
-clear; close all; clc
+%% Crypt Geometry
+clear, close all, clc
 
 % Discretize theta space:
-N_t = 1e2;
-t_0 = 0;
-t_end = 2*pi;
-t = linspace(t_0, t_end, N_t)';
-dt = t(2) - t(1);
+Nth    = 8e1;
+th_0   = 0;
+th_end = 2*pi;
+th     = linspace(th_0, th_end, Nth)';
+dth    = th(2) - th(1);
 
 % Discretize z space:
-N_z = 3e2;
+Nz  = 8e1;
 z_0 = 0;
-L = 78;
-z = linspace(z_0, L, N_z)';
-dz = z(2) - z(1);
+L   = 78.8783;
+z   = linspace(z_0, L, Nz)';
+dz  = z(2) - z(1); 
 
-%Create mesh grid:
-[T_mesh,Z_mesh] = meshgrid(t,z);
+% Create a Meshgrid:
+[Th,Z] = meshgrid(th,z);
 
-% Define radius function:
-r_b = 41/2/pi;
-r_t = 10/pi;   
-a = 0.3;   
+% Define radius function: 
+rb = 41/2/pi;
+rt = 10/pi;
+a  = 0.3;
 
+r   = @(th,z) rb.*(1-exp(-a.*z)) + rt.*exp(a.*(z-L)); 
+rz  = @(th,z) -a*rb.*exp(-a.*z) + a*rt.*exp(a.*(z-L));
+rth = @(th,z) zeros(size(th)); 
 
-r = @(t,z) r_b*(1 - exp(-a * z)) + r_t * exp(a * (z - L));
+% Define surface generating function: 
+X = @(th,z) r(th,z).*cos(th);
+Y = @(th,z) r(th,z).*sin(th); 
 
-
-% Define surface generating function:
-X = @(t,z) r(t,z) .* cos(t);
-Y = @(t,z) r(t,z) .* sin(t);
-Z = @(t,z) z;
-
-
-% Generate surface plot
+% Generate surface plot: 
 figure(1)
-surf(X(T_mesh,Z_mesh),Y(T_mesh,Z_mesh), Z(T_mesh,Z_mesh))
-shading interp
-grid on
+mesh(X(Th,Z),Y(Th,Z),Z,'EdgeColor',[.5 .5 .5])
+hold on
+plot3(r(th,z),zeros(size(z)),z,'k','linewidth',10)
+set(gca,'fontsize',14)
+title('Crypt Geometry','fontsize',24,'interpreter','latex')
+xlabel('$x$','fontsize',14,'interpreter','latex')
+ylabel('$y$','fontsize',14,'interpreter','latex')
+zlabel('$z$','fontsize',14,'interpreter','latex')
+legend('$\vec{X}(\theta,z)$','$\vec{R}(z)$','fontsize',14,'interpreter','latex')
+% shading interp
+% lighting gouraud
+grid on 
 grid minor
-colormap winter
-xlim([-30 30])
+box on
+% colormap summer
+view([1 -1 1])
+xlim([-40 40])
+ylim([-40 40])
 zlim([-2 80])
+
+% Arc-Length: 
+Arc_Length = trapz(z,sqrt(rz(th,z).^2+1));
+
+% Surface Area: 
+Surface_Area = trapz(th,trapz(z,sqrt(rth(Th,Z).^2 + r(Th,Z).^2.*(rz(Th,Z).^2+1))));
+
+% Optimizing the value of L: 
+rz_fit = @(x) -a*rb.*exp(-a.*linspace(0,x,1e3)) + a*rt.*exp(a.*(linspace(0,x,1e3)-x));
+f = @(x) trapz(linspace(0,x,1e3),sqrt(rz_fit(x).^2+1));
+L = fzero(@(x) f(x) - 82,78.87);
+
+
+
+

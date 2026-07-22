@@ -169,13 +169,7 @@ Q_ss = reshape(Q_full(end,:),Nth,Nz);
 % Total number of cells:
 Total_Cells = trapz(z,trapz(th,Q_ss.*G))
 
-% Velocity field: 
-% Vth = -(1./Q_ss.^3).*(1./G).*(...
-%         alpha_th.*(Rz.^2+1).*(Dth*Q_ss) - ...
-%         alpha_th.*(Rz.*Rth).*(Q_ss*Dz'));
-% Vz  = -(1./Q_ss.^3).*(1./G).*(...
-%         -alpha_z.*(Rz.*Rth).*(Dth*Q_ss) + ...
-%         alpha_z.*(Rth.^2+R.^2).*(Q_ss*Dz'));
+
 
 [Vth, Vz] = velocityField_FVconsistent_2D(Q_ss, diffmat, geom, par, bcType);
 
