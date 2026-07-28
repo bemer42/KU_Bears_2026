@@ -10,7 +10,7 @@ Nt = 100;
 t_hat = linspace(0, 10, Nt);
 
 % 3. Model Parameters
-gamma_z = 7;
+gamma_z = .17;
 Zp_hat  = 0.34; % Proliferative height (zp / L)
 
 % 4. Solve using pdepe (m = 0 for 1D Cartesian)
@@ -60,7 +60,7 @@ H = 0.5 * (1 + tanh(50 * (Zp_hat - z)));
 % c * dq/dt = d/dz(f) + s
 c = gamma_z * g_hat;
 f = (1 / (g_hat * q^2)) * dqdz; % Non-linear crowding diffusion flux
-s = g_hat * H * q;             % Proliferation growth source term
+s = g_hat * H * q * gamma_z;             % Proliferation growth source term
 end
 
 function q0 = icfun(~)
