@@ -89,24 +89,21 @@ Nth    = 8e1;
 th_0   = 0;
 th_end = 2*pi;
 th     = linspace(th_0, th_end, Nth);
-dth    = th(2) - th(1);
 
 Nz  = 8e1;
 z_0 = 0;
 L   = 78.8783; 
 z   = linspace(z_0, L, Nz)';
-dz  = z(2) - z(1); 
 
-%Create Mesh Grid:
+% Create Mesh Grid:
 [Th, Z_mesh] = meshgrid(th, z);
 
-%Base Radius Parameters:
+% Base Radius Parameters:
 rb   = 41/2/pi;
 rt   = 10/pi;   
 a    = 0.3;   
 beta = 0.15;
 max_separation = 13;
-
 
 R_z = rb*(1 - exp(-a * Z_mesh)) + rt * exp(a * (Z_mesh - L));
 
@@ -115,13 +112,13 @@ figure(1)
 set(gcf, 'Color', 'w') % Clean white background
 
 for c = -30 : 2 : 40
-   
+    % Fission envelope A(z, c)
     A = 1 ./ (1 + exp(beta * (Z_mesh - c)));
     if c < 0
         A = A * exp(c); 
     end
 
-    % Geometry growth factor
+    % Geometry growth factor g(z, c) and shift function S(z, c)
     g = 1 + (sqrt(2) - 1) ./ (1 + exp(beta * (Z_mesh - c)));
     lambda = g .* R_z;
     shift  = max_separation * A;
@@ -132,36 +129,28 @@ for c = -30 : 2 : 40
     Y  = lambda .* sin(Th);
     Z  = Z_mesh;
 
-    % 1D Cell chain R(z) positioned along theta = 0 on Branch 1
-    R1_x = lambda(:, 1) .* cos(0) - shift(:, 1);
-    R1_y = lambda(:, 1) .* sin(0);
+    % Single 1D Cell chain R1(z) along theta = 0 on Branch 1
+    R1_x = lambda(:, 1) - shift(:, 1);
+    R1_y = zeros(Nz, 1);
     R1_z = z;
-
-    % 1D Cell chain R(z) positioned along theta = 0 on Branch 2
-    R2_x = lambda(:, 1) .* cos(0) + shift(:, 1);
-    R2_y = lambda(:, 1) .* sin(0);
-    R2_z = z;
 
     % Plot Surfaces with grey mesh formatting
     mesh(X1, Y, Z, 'EdgeColor', [.5 .5 .5], 'FaceAlpha', 0.1)
     hold on
     mesh(X2, Y, Z, 'EdgeColor', [.5 .5 .5], 'FaceAlpha', 0.1)
 
-    % Plot the 1D Cell Chains R(z)
+    % Plot the SINGLE 1D Cell Chain R1(z)
     plot3(R1_x, R1_y, R1_z, 'k', 'LineWidth', 4)
-    plot3(R2_x, R2_y, R2_z, 'k', 'LineWidth', 4)
     hold off
 
-    % Styling and Formatting matching Figure 1
+    % Styling and Formatting
     set(gca, 'FontSize', 14)
     title('Crypt Fission Geometry', 'FontSize', 20, 'Interpreter', 'latex')
     xlabel('$x$', 'FontSize', 14, 'Interpreter', 'latex')
     ylabel('$y$', 'FontSize', 14, 'Interpreter', 'latex')
     zlabel('$z$', 'FontSize', 14, 'Interpreter', 'latex')
-
-    legend('$\vec{X}_1(\theta,z)$', '$\vec{X}_2(\theta,z)$', '$\vec{R}_1(z)$', '$\vec{R}_2(z)$', ...
+    legend('$\vec{X}_1(\theta,z)$', '$\vec{X}_2(\theta,z)$', '$\vec{R}_1(z)$', ...
         'FontSize', 12, 'Interpreter', 'latex', 'Location', 'northeast')
-
     grid on 
     grid minor
     box on
