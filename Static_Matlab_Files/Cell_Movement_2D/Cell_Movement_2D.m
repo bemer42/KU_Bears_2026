@@ -8,12 +8,12 @@ par     = struct();
 
 % Boundary condition set:
 bcType = "NbDt";
- 
+
 % Define parameters:
-alpha_z  = 5e3; 
-alpha_th = alpha_z/10; 
-Tc       = 15.1954; 
-zp       = 27; 
+alpha_z  = 1.6406e3;
+alpha_th = alpha_z/10;
+Tc       = 15.1954;
+zp       = 27;
 
 % Define geometry parameters:
 r_b   = 41/2/pi;
@@ -23,44 +23,44 @@ a     = 0.3;
 % Discretize time:
 N_t = 2e3;
 t_0 = 0;
-t_end = 1e5;
+t_end = 8.5e-1;
 t = linspace(t_0,t_end,N_t);
 
 % Discretize theta space:
-Nth    = 5e1;
+Nth    = 4e1;
 th_0   = 0;
 th_end = 2*pi;
 th     = linspace(th_0,th_end,Nth)';
 dth    = th(2) - th(1);
 
 % Discretize z space:
-Nz   = 5e1;
+Nz   = 7e1;
 z_0  = 0;
 L    = 78.8783;
 % --- Uniform Grid ---
 z    = linspace(z_0,L,Nz)';
 dz   = z(2) - z(1);
-% --- Non-Uniform Grid --- 
-beta = 3;
+% --- Non-Uniform Grid ---
+beta = .4;
 xi   = linspace(0,1,Nz)';
 z    = L/2*(1+tanh(beta*(2*xi-1))/tanh(beta));
 
 % Create mesh grid:
 [Z,Th] = meshgrid(z,th);
 
-% Differentiation Matrices
+% Differentiation Matrix in theta
 Dth = spdiags([-1/2*ones(Nth,1) 1/2*ones(Nth,1)],[-1 1],Nth,Nth);
 Dth(1,end) = -1/2;
 Dth(end,1) =  1/2;
 Dth = Dth/dth;
 
-% Define the differentiation matrix:
-% --- Uniform Grid --- 
+% Define the differentiation matrix in z
+% --- Uniform Grid ---
 Dz = spdiags([-1/2*ones(Nz,1) 1/2*ones(Nz,1)],[-1 1],Nz,Nz);
 Dz(1,1:3) = [-3/2 2 -1/2];
 Dz(end, end-2:end) = [1/2 -2 3/2];
 Dz = Dz/dz;
-% --- Non-Uniform Grid --- 
+% --- Non-Uniform Grid ---
 Dz = diffmat_nonuniform(z);
 
 R   = r_b*(1-exp(-a*Z))+r_t*exp(a*(Z-L));
@@ -69,22 +69,22 @@ Rz  = a*r_b*exp(-a*Z) + a*r_t*exp(a*(Z-L));
 G   = sqrt(Rth.^2+R.^2.*(Rz.^2 + 1));
 
 % Initial Condition:
-% f = @(th,z) 1 + exp(-(z - zp).^2/.05-(th-pi/2).^2/.2); 
-f = @(th,z) ones(size(th));
+f = @(th,z) 1 + exp(-(z - zp).^2/.1-(th-pi/2).^2/.2);
+% f = @(th,z) ones(size(th));
 Q0 = f(Th,Z);
 Q0_int = Q0(:,2:end-1);
 q0_int = Q0_int(:);
 
-% Construct structures for pde: 
-diffmat.Dth = Dth; 
-diffmat.Dz  = Dz; 
+% Construct structures for pde:
+diffmat.Dth = Dth;
+diffmat.Dz  = Dz;
 
 geom.Th  = Th;
 geom.Z   = Z;
-geom.R   = R; 
-geom.Rth = Rth; 
+geom.R   = R;
+geom.Rth = Rth;
 geom.Rz  = Rz;
-geom.G   = G; 
+geom.G   = G;
 
 par.alpha_th = alpha_th;
 par.alpha_z  = alpha_z;
@@ -168,98 +168,73 @@ Q_ss = reshape(Q_full(end,:),Nth,Nz);
 
 % Total number of cells:
 Total_Cells = trapz(z,trapz(th,Q_ss.*G))
-
-% Velocity field: 
-% Vth = -(1./Q_ss.^3).*(1./G).*(...
-%         alpha_th.*(Rz.^2+1).*(Dth*Q_ss) - ...
-%         alpha_th.*(Rz.*Rth).*(Q_ss*Dz'));
-% Vz  = -(1./Q_ss.^3).*(1./G).*(...
-%         -alpha_z.*(Rz.*Rth).*(Dth*Q_ss) + ...
-%         alpha_z.*(Rth.^2+R.^2).*(Q_ss*Dz'));
+Prolif_Cells = trapz(z,trapz(th,Q_ss.*(Z<zp).*G))
 
 [Vth, Vz] = velocityField_FVconsistent_2D(Q_ss, diffmat, geom, par, bcType);
 
-% grid-independent starting height
-% Zcum = cumtrapz(z, trapz(th, G, 1));
-% Zcum = Zcum / Zcum(end);
-% z0   = interp1(Zcum, z, 0.01, 'linear');
-
-% travel time
-[Rmean, R, theta0] = avgTravelTimeFromVectorField(th, z, Vth, Vz, ...
+% Crypt Renewal Time
+[Rmean, Rall, theta0] = avgTravelTimeFromVectorField(th, z, Vth, Vz, ...
     'theta0', linspace(pi/2,3*pi/2,60), 'z0', z(2));
 Crypt_Renewal_Time = Rmean/24
 
+
 % Steady state plot:
-dm = 1;
+dm = 5;
 figure(1)
-subplot(2,1,1)
 surf(Th,Z,Q_ss);
-set(gca,'fontsize',16)
-title('Cell Density','fontsize',25,'interpreter','latex')
-xlabel('$\theta$','fontsize',20,'interpreter','latex')
-ylabel('$z$','fontsize',20,'interpreter','latex')
-zlabel('$q(\theta,z,t)$ and $v(\theta,z,t)$','fontsize',20,'interpreter','latex')
+hold on
+quiver3(Th(2:dm:end,2:dm:end-dm),Z(2:dm:end,2:dm:end-dm),Q_ss(2:dm:end,2:dm:end-dm),...
+    Vth(2:dm:end,2:dm:end-dm),Vz(2:dm:end,2:dm:end-dm),zeros(size(Th(2:dm:end,2:dm:end-dm))),...
+    1.0,'color',[0.15 0.15 0.15],'Linewidth',2.5,'MaxHeadSize',.008);
+set(gca,'fontsize',42)
+title('Cell Density and Velocity','fontsize',55,'interpreter','latex')
+xlabel('$\theta$','fontsize',50,'interpreter','latex')
+ylabel('$z$','fontsize',50,'interpreter','latex')
+zlabel('$q_s(\theta,z)$ and $\vec{v}_s(\theta,z)$','fontsize',50,'interpreter','latex')
+legend('$q_s(\theta,z)$','$\vec{v}_s(\theta,z)$','fontsize',50,'interpreter','latex')
 grid on
 grid minor
+box on
 colormap turbo
-% colorbar
+shading interp
+colorbar
 caxis([1 max(max(Q_ss))])
 xlim([0 2*pi])
 ylim([0 L])
 view([0 0 1])
-subplot(2,1,2)
-quiver(Th(:,2:dm:end),Z(:,2:dm:end),Vth(:,2:dm:end),Vz(:,2:dm:end),...
-       1.0,'color',[.5 .5 .5],'Linewidth',2.5,'MaxHeadSize',.1);                      
-set(gca,'fontsize',16)
-title('Velocity Field','fontsize',25,'interpreter','latex')
-xlabel('$\theta$','fontsize',20,'interpreter','latex')
-ylabel('$z$','fontsize',20,'interpreter','latex')
-grid on
-grid minor
-xlim([0 2*pi])
-ylim([0 L])
 
 
 %% Animation
-dm = 1;
-dt  = round(.1*N_t);
- 
+dm = 5;
+dt  = round(.05*N_t);
+
 for i = 1:dt:N_t
 
     Q = reshape(Q_full(i,:), Nth, Nz);
 
-    Vth = -(1./Q.^3).*(1./G).*(...
-        alpha_th.*(Rz.^2+1).*(Dth*Q) - ...
-        alpha_th.*(Rz.*Rth).*(Q*Dz'));    
-    Vz  = -(1./Q.^3).*(1./G).*(...
-        -alpha_z.*(Rz.*Rth).*(Dth*Q) + ...
-        alpha_z.*(Rth.^2+R.^2).*(Q*Dz'));
+    [Vth, Vz] = velocityField_FVconsistent_2D(Q, diffmat, geom, par, bcType);
 
     figure(2)
-    subplot(2,1,1)
     surf(Th,Z,Q);
-    set(gca,'fontsize',16)
-    title('Cell Density','fontsize',25,'interpreter','latex')
-    xlabel('$\theta$','fontsize',20,'interpreter','latex')
-    ylabel('$z$','fontsize',20,'interpreter','latex')
-    zlabel('$q(\theta,z,t)$ and $v(\theta,z,t)$','fontsize',20,'interpreter','latex')
+    hold on
+    quiver3(Th(2:dm:end,2:dm:end-dm),Z(2:dm:end,2:dm:end-dm),Q(2:dm:end,2:dm:end-dm),...
+        Vth(2:dm:end,2:dm:end-dm),Vz(2:dm:end,2:dm:end-dm),zeros(size(Th(2:dm:end,2:dm:end-dm))),...
+        1.0,'color',[0.15 0.15 0.15],'Linewidth',2.5,'MaxHeadSize',.008);    set(gca,'fontsize',42)
+    title('Cell Density and Velocity','fontsize',55,'interpreter','latex')
+    xlabel('$\theta$','fontsize',50,'interpreter','latex')
+    ylabel('$z$','fontsize',50,'interpreter','latex')
+    zlabel('$q_s(\theta,z)$ and $\vec{v}_s(\theta,z)$','fontsize',50,'interpreter','latex')
+    legend('$q_s(\theta,z)$','$\vec{v}_s(\theta,z)$','fontsize',50,'interpreter','latex')
     grid on
     grid minor
-%     caxis([1 max(max(Q))])
+    box on
+    colormap turbo
+    shading interp
+    colorbar
+    caxis([1 max(max(Q_ss))])
     xlim([0 2*pi])
     ylim([0 L])
     view([0 0 1])
-    subplot(2,1,2)
-    quiver(Th(:,2:dm:end),Z(:,2:dm:end),Vth(:,2:dm:end),Vz(:,2:dm:end),...
-        1.0,'color',[.5 .5 .5],'Linewidth',2.5,'MaxHeadSize',.1);
-    set(gca,'fontsize',16)
-    title('Velocity Field','fontsize',25,'interpreter','latex')
-    xlabel('$\theta$','fontsize',20,'interpreter','latex')
-    ylabel('$z$','fontsize',20,'interpreter','latex')
-    grid on
-    grid minor
-    xlim([0 2*pi])
-    ylim([0 L])
     if i == 1
         pause
     end
@@ -269,8 +244,9 @@ end
 %% Plot on crypt domain
 dt = round(.1*N_t);
 
-X_plot = r(Th,Z).*cos(Th);
-Y_plot = r(Th,Z).*sin(Th);
+
+X_plot = R.*cos(Th);
+Y_plot = R.*sin(Th);
 Z_plot = Z;
 
 for k = 1:dt:N_t
@@ -279,34 +255,27 @@ for k = 1:dt:N_t
 
     figure(2)
     surf(X_plot,Y_plot,Z_plot,Q)
+    set(gca,'fontsize',42)
+    title('Cell Density on Crypt','fontsize',55,'interpreter','latex')
+    xlabel('$x$','fontsize',50,'interpreter','latex')
+    ylabel('$y$','fontsize',50,'interpreter','latex')
+    zlabel('$z$','fontsize',50,'interpreter','latex')
+    legend('$q_s(z)$','fontsize',50,'interpreter','latex')
+    grid on
+    grid minor
+    box on
     shading interp
     colormap turbo
     colorbar
-    xlim([-30 30])
-    ylim([-30 30])
+    lighting gouraud
+    xlim([-40 40])
+    ylim([-40 40])
     zlim([0 80])
-    caxis([1 1.25])
+    caxis([1 1.05])
     if k == 1
         pause
     end
 
 end
 
-%% Steady State Analysis
-
-X_plot = r(Th,Z).*cos(Th);
-Y_plot = r(Th,Z).*sin(Th);
-Z_plot = Z;
-
-Q_ss = reshape(Q_full(end,:),Nth,Nz);
-
-figure(3)
-surf(X_plot,Y_plot,Z_plot,Q_ss)
-shading interp
-colormap turbo
-colorbar
-xlim([-30 30])
-ylim([-30 30])
-zlim([0 80])
-caxis([1 1.05])
 

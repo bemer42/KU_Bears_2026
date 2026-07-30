@@ -183,6 +183,11 @@ Prolif_Cells = (r_b*L/ell)*trapz(z_hat, trapz(th, Qhat_ss .* (Z_hat < Zp_hat) .*
 % -------------------------
 [Vth_ss, Vz_hat_ss] = ND_velocityField_FVconsistent_2D(Qhat_ss, diffmat_hat, geom_hat, par_hat, bcType);
 
+% Crypt Renewal Time
+[Rmean, Rall, theta0] = avgTravelTimeFromVectorField(th, z_hat, Vth_ss, Vz_hat_ss, ...
+    'theta0', linspace(pi/2,3*pi/2,60), 'z0', z(2));
+Crypt_Renewal_Time = (Tc/log(2))*Rmean/24
+
 % -------------------------
 %  Steady state plot
 % -------------------------
