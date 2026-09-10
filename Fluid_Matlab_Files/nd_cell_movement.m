@@ -13,13 +13,13 @@ par_hat     = struct();
 
 % Define parameters:
 Tc     = 15.1594; 
-L      = 78.8783; 
+L      = 79.3515; 
 ell    = 1; 
 %zp_hat = 27/L; 
 %gamma  = .1730; 
 
 % Define geometry parameters:
-r_b     = 41/2/pi;
+r_b     = 18/pi;
 r_t     = 10/pi;
 a       = 0.3;
 epsilon = r_b/L; 
