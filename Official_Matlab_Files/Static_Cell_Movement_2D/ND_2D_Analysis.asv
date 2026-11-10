@@ -1,0 +1,221 @@
+%% Analysis of 2D Nondimensional model:
+clear; close all; clc
+
+% -------------------------
+% Define fixed parameters:
+% -------------------------
+L   = 79.3515;
+z_0 = 2.11/L;
+
+% -------------------------
+% Define ND parameter vectors:
+% -------------------------
+N_g       = 4;
+N_z       = 3;
+gz        = 1/sqrt(10);
+gth_vec   = logspace(-.6,-.2,N_g);
+zphat_vec = linspace(20,30,N_z)/L;
+
+% -------------------------
+% Define Mesh:
+% -------------------------
+[Zphat,Gth] = meshgrid(zphat_vec,gth_vec);
+
+% -------------------------
+% Preallocate storage matrices:
+% -------------------------
+C = zeros(N_g,N_z);
+P = zeros(N_g,N_z);
+R = zeros(N_g,N_z);
+
+% -------------------------
+% Loop through parameter vectors:
+% -------------------------
+tic 
+for i = 1:N_g
+    for j = 1:N_z
+
+        [C(i,j), P(i,j), R(i,j)] = ND_2D_Function(z_0,gz,gth_vec(i),zphat_vec(j),"NbDt");
+
+    end
+    i
+end
+toc
+
+% -------------------------
+% Save parameter set:
+% -------------------------
+save('Analysis_2D_10-14.mat')
+
+
+%% Plot of Feasible Space:
+% -------------------------
+% Load set:
+% -------------------------
+load('Analysis_2D_10-14.mat')
+
+% -------------------------
+% Define contours to plot:
+% -------------------------
+C_CON = [3000 3100];
+P_CON = [800 1000];
+R_CON = [4.9 5.1];
+
+% -------------------------------------------------------------------------
+% Total Cell Contours: 
+% -------------------------------------------------------------------------
+MC  = max(max(C))+1; 
+
+C1 = contourc(gth_vec,zphat_vec,C',[C_CON(1) C_CON(1)]);
+gc1 = C1(1,2:end); 
+zc1 = C1(2,2:end); 
+
+C2 = contourc(gth_vec,zphat_vec,C',[C_CON(2) C_CON(2)]);
+gc2 = C2(1,2:end); 
+zc2 = C2(2,2:end); 
+
+% Total Cells:
+figure(1)
+subplot(2,2,1)
+surf(log10(Gth),Zphat,C)
+hold on
+plot3(log10(gc1),zc1,MC*ones(size(zc1)),'m:','linewidth',5)
+plot3(log10(gc2),zc2,MC*ones(size(zc2)),'m','linewidth',5)
+set(gca,'fontsize',42)
+title('Total Number of Cells','fontsize',55,'interpreter','latex')
+xlabel('$\log_{10}(\gamma_\theta)$','fontsize',50,'interpreter','latex')
+ylabel('$\hat{z_p}$','fontsize',50,'interpreter','latex')
+zlabel('$\mathcal{C}$','fontsize',50,'interpreter','latex')
+legend('$\mathcal{C}(\gamma_\theta,\hat{z_p})$',['$\mathcal{C} = $ ' num2str(C_CON(1))],...
+       ['$\mathcal{C} = $ ' num2str(C_CON(2))],'fontsize',50,'interpreter','latex',...
+       'location','northeast')
+view([0 0 1])
+grid on
+grid minor
+box on
+shading interp
+colormap turbo
+colorbar
+lighting gouraud
+xlim([min(log10(gth_vec)) max(log10(gth_vec))])
+ylim([min(zphat_vec) max(zphat_vec)])
+zlim([min(min(C)) MC])
+% -------------------------------------------------------------------------
+
+
+% -------------------------------------------------------------------------
+% Proliferative Cell Contours: 
+% -------------------------------------------------------------------------
+MP  = max(max(P))+1; 
+
+P1 = contourc(gth_vec,zphat_vec,P',[P_CON(1) P_CON(1)]);
+gp1 = P1(1,2:end); 
+zp1 = P1(2,2:end); 
+
+P2 = contourc(gth_vec,zphat_vec,P',[P_CON(2) P_CON(2)]);
+gp2 = P2(1,2:end); 
+zp2 = P2(2,2:end); 
+
+% Proliferative Cells:
+subplot(2,2,2)
+surf(log10(Gth),Zphat,P)
+hold on
+plot3(log10(gp1),zp1,MP*ones(size(zp1)),'m:','linewidth',5)
+plot3(log10(gp2),zp2,MP*ones(size(zp2)),'m','linewidth',5)
+set(gca,'fontsize',42)
+title('Total Number of Proliferative Cells','fontsize',55,'interpreter','latex')
+xlabel('$\log_{10}(\gamma_\theta)$','fontsize',50,'interpreter','latex')
+ylabel('$\hat{z_p}$','fontsize',50,'interpreter','latex')
+zlabel('$\mathcal{P}$','fontsize',50,'interpreter','latex')
+legend('$\mathcal{P}(\gamma_\theta,\hat{z_p})$',['$\mathcal{P} = $ ' num2str(P_CON(1))],...
+       ['$\mathcal{P} = $ ' num2str(P_CON(2))],'fontsize',50,'interpreter','latex',...
+       'location','northeast')
+view([0 0 1])
+colorbar 
+grid on
+grid minor
+box on
+shading interp
+colormap turbo
+lighting gouraud
+xlim([min(log10(gth_vec)) max(log10(gth_vec))])
+ylim([min(zphat_vec) max(zphat_vec)])
+zlim([min(min(P)) MP])
+% -------------------------------------------------------------------------
+
+
+% -------------------------------------------------------------------------
+% Crypt Renewal Contours: 
+% -------------------------------------------------------------------------
+MR  = max(max(R))+1; 
+
+R1 = contourc(gth_vec,zphat_vec,R',[R_CON(1) R_CON(1)]);
+gr1 = R1(1,2:end); 
+zr1 = R1(2,2:end); 
+
+R2 = contourc(gth_vec,zphat_vec,R',[R_CON(2) R_CON(2)]);
+gr2 = R2(1,2:end); 
+zr2 = R2(2,2:end); 
+
+% Crypt Renewal Time
+subplot(2,2,3)
+surf(log10(Gth),Zphat,R)
+hold on
+plot3(log10(gr1),zr1,MR*ones(size(zr1)),'m:','linewidth',5)
+plot3(log10(gr2),zr2,MR*ones(size(zr2)),'m','linewidth',5)
+set(gca,'fontsize',42)
+title('Crypt Renewal Time','fontsize',55,'interpreter','latex')
+xlabel('$\log_{10}(\gamma_\theta)$','fontsize',50,'interpreter','latex')
+ylabel('$\hat{z_p}$','fontsize',50,'interpreter','latex')
+zlabel('$\mathcal{R}$','fontsize',50,'interpreter','latex')
+legend('$\mathcal{R}(\gamma_\theta,\hat{z_p})$',['$\mathcal{R} = $ ' num2str(R_CON(1))],...
+       ['$\mathcal{R} = $ ' num2str(R_CON(2))],'fontsize',50,'interpreter','latex',...
+       'location','northeast')
+view([0 0 1])
+colorbar 
+grid on
+grid minor
+box on
+shading interp
+colormap turbo
+lighting gouraud
+xlim([min(log10(gth_vec)) max(log10(gth_vec))])
+ylim([min(zphat_vec) max(zphat_vec)])
+zlim([min(min(R)) MR])
+% -------------------------------------------------------------------------
+
+
+% -------------------------------------------------------------------------
+% Crypt Renewal Contours: 
+% -------------------------------------------------------------------------
+X1 = [log10(gp1(:)); flipud(log10(gp2(:)))];
+Y1 = [zp1(:); flipud(zp2(:))];
+
+X2 = [log10(gc1(:)); flipud(log10(gc2(:)))];
+Y2 = [zc1(:); flipud(zc2(:))];
+
+X3 = [log10(gr1(:)); flipud(log10(gr2(:)))];
+Y3 = [zr1(:); flipud(zr2(:))];
+
+subplot(2,2,4)
+plot(log10(gc1),zc1,'k:','linewidth',4)
+hold on
+plot(log10(gc2),zc2,'k','linewidth',4)
+plot(log10(gp1),zp1,'k:','linewidth',4)
+plot(log10(gp2),zp2,'k','linewidth',4)
+plot(log10(gr1),zr1,'k:','linewidth',4)
+plot(log10(gr2),zr2,'k','linewidth',4)
+fill(X1, Y1, 'k', 'FaceAlpha', 0.1); 
+fill(X2, Y2, 'k', 'FaceAlpha', 0.1); 
+fill(X3, Y3, 'k', 'FaceAlpha', 0.1); 
+plot(-.4,.32,'ko','linewidth',5)
+set(gca,'fontsize',42)
+title('Feasible Region','fontsize',55,'interpreter','latex')
+xlabel('$\log_{10}(\gamma_\theta)$','fontsize',50,'interpreter','latex')
+ylabel('$\hat{z_p}$','fontsize',50,'interpreter','latex')
+grid on
+grid minor
+xlim([min(log10(gth_vec)) max(log10(gth_vec))])
+ylim([min(zphat_vec) max(zphat_vec)])
+% -------------------------------------------------------------------------
+

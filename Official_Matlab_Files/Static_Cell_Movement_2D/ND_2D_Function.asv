@@ -1,0 +1,209 @@
+function [C, P, Renewal_Time] = ND_2D_Function(gamma_th, gamma_z, Zp_hat_in, bcType)
+%ND_2D_Function  Solve ND 2D model and return C, P, and renewal time.
+%
+% Inputs
+%   gamma_th   : nondimensional group (theta)
+%   gamma_z    : nondimensional group (z)
+%   Zp_hat_in  : either
+%                 - scalar in (0,1) meaning constant proliferative height, or
+%                 - function handle Zp_hat(th,t_hat) returning size(th)
+%   bcType     : "NbDt", "NbNt", "DbNt", or "DbDt"
+%
+% Outputs
+%   C            : total cells (from compute_CP)
+%   P            : proliferative cells (from compute_CP)
+%   Renewal_Time : renewal time (output of compute_ND_Renewal_Time)
+%
+% Requirements (must be on MATLAB path):
+%   diffmat_nonuniform, ND_dqdt_2D_snipsnap, solveFluxNeumannAtBoundary,
+%   compute_CP, ND_velocityField_FVconsistent_2D, compute_ND_Renewal_Time
+
+% -------------------------
+% User-set / run controls
+% -------------------------
+uniform = 0;
+
+% Grid/Time Points:
+Nt     = 5e3;
+t_end  = 1e5;
+Nz     = 6e1;
+Nth    = 6e1;
+
+% Boundary condition set:
+bcType = string(bcType);
+mustBeMember(bcType, ["NbDt","NbNt","DbNt","DbDt"]);
+
+% -------------------------
+% Dimensional parameters (kept as in your script)
+% -------------------------
+Tc       = 15.1954;
+zp       = 23.4087;
+L        = 79.3515;
+ell      = 1;
+
+% -------------------------
+% Geometry parameters
+% -------------------------
+r_b   = 18/pi;
+r_t   = 10/pi;
+a     = 0.3;
+
+% -------------------------
+% Nondimensional groups
+% -------------------------
+epsilon = r_b/L;
+
+% Zp_hat as a function handle (accept scalar or handle)
+if isa(Zp_hat_in, "function_handle")
+    Zp_hat_fun = Zp_hat_in;
+else
+    Zp0 = double(Zp_hat_in);
+    Zp_hat_fun = @(th,t) Zp0*ones(size(th));
+end
+
+% -------------------------
+% Time discretization (ND time)
+% -------------------------
+t_hat_0   = 0;
+t_hat_end = t_end*log(2)./Tc;
+t_hat     = linspace(t_hat_0, t_hat_end, Nt);
+
+% -------------------------
+% Theta grid
+% -------------------------
+th_0    = 0;
+th_end  = 2*pi;
+th      = linspace(th_0, th_end, Nth+1).';
+th(end) = [];
+dth     = th(2) - th(1);
+
+% -------------------------
+% z-hat grid in [0,1]
+% -------------------------
+z0 = 0;
+if uniform == 1
+    z_hat  = linspace(z0,1,Nz).';
+else
+    alpha = .75;
+    beta  = 4;
+    xi    = linspace(0,1,Nz).';
+    z_hat = (tanh(beta*(xi-alpha))-tanh(-beta*alpha))./(tanh(beta*(1-alpha))-tanh(-beta*alpha));
+end
+
+% Mesh grids (Nth x Nz)
+[Z_hat, Th] = meshgrid(z_hat, th);
+
+% -------------------------
+% Differentiation in theta
+% -------------------------
+Dth = spdiags([-0.5*ones(Nth,1) 0.5*ones(Nth,1)], [-1 1], Nth, Nth);
+Dth(1,end) = -0.5;
+Dth(end,1) =  0.5;
+Dth = Dth / dth;
+
+% -------------------------
+% Differentiation in z (nonuniform)
+% -------------------------
+Dz = diffmat_nonuniform(z_hat);
+
+% -------------------------
+% ND geometry on (theta, zhat)
+% -------------------------
+R_hat   = (1 - exp(-a*L*Z_hat)) + (r_t/r_b)*exp(a*L*(Z_hat - 1));
+Rz_hat  = R_hat*Dz';
+Rth_hat = Dth*R_hat;
+S_hat   = sqrt(Rth_hat.^2 + R_hat.^2 .* (1 + epsilon^2*(Rz_hat.^2)));
+
+% -------------------------
+% Structures for RHS
+% -------------------------
+diffmat_hat       = struct();
+diffmat_hat.Dth   = Dth;
+diffmat_hat.Dz    = Dz;
+
+geom_hat          = struct();
+geom_hat.Th       = Th;
+geom_hat.Z_hat    = Z_hat;
+geom_hat.R_hat    = R_hat;
+geom_hat.Rth_hat  = Rth_hat;
+geom_hat.Rz_hat   = Rz_hat;
+geom_hat.S_hat    = S_hat;
+
+par_hat           = struct();
+par_hat.gamma_th  = gamma_th;
+par_hat.gamma_z   = gamma_z;
+par_hat.epsilon   = epsilon;
+par_hat.ell       = ell;
+par_hat.Zp_hat    = @(th_in, t_in) Zp_hat_fun(th_in, t_in);
+
+% -------------------------
+% Initial condition
+% -------------------------
+Q_hat_0     = ones(size(Th));          % your script's default
+Q_hat_0_int = Q_hat_0(:,2:end-1);
+q_hat_0_int = Q_hat_0_int(:);
+
+% -------------------------
+% ND RHS handle and solve
+% -------------------------
+dQhatdt = @(tH, qint) ND_dqdt_2D_snipsnap(tH, qint, diffmat_hat, geom_hat, par_hat, bcType);
+
+options = odeset('Stats','off','MaxStep',inf);
+[t_hat_sol, q_hat_int_sol] = ode15s(dQhatdt, t_hat, q_hat_0_int, options); %#ok<ASGLU>
+
+% -------------------------
+% Expand interior back to full Q at final time only (steady state)
+% -------------------------
+% One-sided zhat-derivative stencil coefficients from Dz
+b0 = Dz(1,1);       b1 = Dz(1,2);       b2 = Dz(1,3);
+t2 = Dz(end,end-2); t1 = Dz(end,end-1); t0 = Dz(end,end);
+
+nz = Nz - 2;
+
+q_int_end = q_hat_int_sol(end,:);
+Q_int = reshape(q_int_end, Nth, nz);
+
+Qss = zeros(Nth, Nz);
+Qss(:,2:Nz-1) = Q_int;
+
+switch bcType
+    case "NbDt"
+        Qss(:,1)   = solveFluxNeumannAtBoundary(1,  b0, b1, b2, Qss(:,2),Qss(:,3),diffmat_hat, geom_hat);
+        Qss(:,end) = ell;
+    case "NbNt"
+        Qss(:,1)   = solveFluxNeumannAtBoundary(1,  b0, b1, b2, Qss(:,2),Qss(:,3),diffmat_hat, geom_hat);
+        Qss(:,end) = solveFluxNeumannAtBoundary(Nz, t0, t1, t2, Qss(:,end-1), Qss(:,end-2),diffmat_hat, geom_hat);
+    case "DbNt"
+        Qss(:,1)   = ell;
+        Qss(:,end) = solveFluxNeumannAtBoundary(Nz, t0, t1, t2, Qss(:,end-1), Qss(:,end-2),diffmat_hat, geom_hat);
+    case "DbDt"
+        Qss(:,1)   = ell;
+        Qss(:,end) = ell;
+end
+
+% -------------------------
+% Compute C and P from steady state
+% -------------------------
+Zp_now = Zp_hat_fun(th, t_hat(end));                  % Nth x 1 (expected)
+maskP  = (Z_hat < (Zp_now * ones(1,Nz)));             % Nth x Nz logical
+
+[C, P] = compute_CP(Qss, S_hat, th, z_hat, maskP, r_b*L/ell);
+
+% -------------------------
+% Velocity field at steady state (ND)
+% -------------------------
+[Vth_ss, Vz_hat_ss] = ND_velocityField_FVconsistent_2D(Qss, diffmat_hat, geom_hat, par_hat, bcType);
+
+% -------------------------
+% Renewal time
+% -------------------------
+th_0_vec = linspace(th(2), th(end-1), 10);
+
+% start height: 25% of proliferative height (use mean if Zp varies with theta)
+Zp_mean = mean(Zp_hat_fun(th, t_hat(end)));
+z_0     = 0.25 * Zp_mean;
+
+% IMPORTANT (per your final working setup): divide by S_hat in renewal-time ODE
+Renewal_Time = compute_ND_Renewal_Time(Tc, th, z_hat, z_0, th_0_vec, Vth_ss, Vz_hat_ss, S_hat);
+
+end

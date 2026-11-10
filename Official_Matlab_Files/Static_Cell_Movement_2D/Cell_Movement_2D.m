@@ -1,0 +1,585 @@
+%% Cell Movement 2D 
+close all; clear; clc; ssp = 1; ssng = 1; uniform = 0;
+
+% -------------------------
+% Grid/Time Points
+% -------------------------
+N_t   = 5e3;
+t_end = 1e5;
+Nz    = 6e1;
+Nth   = 6e1;
+
+% -------------------------
+% Predefine structures and boundary type:
+% -------------------------
+geom    = struct(); 
+diffmat = struct();
+par     = struct();
+bcType  = "NbDt";
+
+% -------------------------
+% Physical parameters:
+% -------------------------
+alpha_th = 3.76;
+alpha_z  = 9.0829e2;
+Tc       = 15.1954;
+zp       = 25.39;
+L        = 79.3515;
+ell      = 1;
+
+% -------------------------
+% Geometric parameters:
+% -------------------------
+r_b   = 18/pi;
+r_t   = 10/pi;
+a     = 0.3;
+p     = 0;
+split = -inf;
+
+% -------------------------
+% Parameter functions:
+% -------------------------
+% alpha_th = @(z,L) alpha_th + (alpha_z-alpha_th).*exp(-5*z);
+ALPHA_th = @(z,L) alpha_th*ones(size(z));
+% zp       = @ (th,t) 27 + (24/t_end*t-8).*(cos(4*th)+1).*(t<2*t_end/3).*(t>t_end/3) +...
+%                          8.*(t>=2*t_end/3).*(cos(4*th)+1);
+% zp       = @(th,t) 27 - 21*exp(-(th-pi/2).^2*3) - 21.*exp(-(th-3*pi/2).^2*3);
+Zp       = @(th,t) zp*ones(size(th));
+
+% -------------------------
+% Discretize time:
+% -------------------------
+t_0 = 0;
+t = linspace(t_0,t_end,N_t);
+
+% -------------------------
+% Theta grid:
+% -------------------------
+th_0    = 0;
+th_end  = 2*pi;
+th      = linspace(th_0,th_end,Nth+1)';
+th(end) = [];
+dth     = th(2) - th(1);
+
+% -------------------------
+% Z grid:
+% -------------------------
+z_0  = 0;
+if uniform == 1
+    % --- Uniform Grid ---
+    z    = linspace(z_0,L,Nz)';
+    dz   = z(2) - z(1);
+else
+    % --- Non-Uniform Grid ---
+    alpha = .75;
+    beta  = 4;
+    xi    = linspace(0,1,Nz)';
+    z     = L*(tanh(beta*(xi-alpha))-tanh(-beta*alpha))./...
+            (tanh(beta*(1-alpha))-tanh(-beta*alpha));
+end
+
+% -------------------------
+% Create mesh grid:
+% -------------------------
+[Z,Th] = meshgrid(z,th);
+
+% -------------------------
+% Differentiation matrices:
+% -------------------------
+Dth = spdiags([-1/2*ones(Nth,1) 1/2*ones(Nth,1)],[-1 1],Nth,Nth);
+Dth(1,end) = -1/2;
+Dth(end,1) =  1/2;
+Dth = Dth/dth;
+
+Dz = diffmat_nonuniform(z);
+
+% -------------------------
+%  Crypt geometry:
+% -------------------------
+% Define static radius:
+R_s   = r_b*(1-exp(-a*Z))+r_t*exp(a*(Z-L));
+
+% Output static crypt if p = 0:
+if p == 0
+    
+    R = R_s;
+
+else
+
+    % Define current crypt structure:
+    A = p./(1 + exp(-.2*(split-Z)));
+    C = A .* (1 + sqrt(5))/2.*R_s;
+    R = sqrt(C.^2.*cos(2*Th)+...
+        sqrt((R_s.^2+R_s.*C).^2-C.^4.*sin(2*Th).^2));
+
+end
+Rz    = R*Dz';
+Rth   = Dth*R;
+G     = Rth.^2+R.^2.*(Rz.^2 + 1);
+
+% -------------------------
+% Initial condition:
+% -------------------------
+% f = @(th,z) 1 + exp(-(z - 28).^2/.1-(th-pi/2).^2/.2);
+% f = @(th,z) ones(size(th)) + 0.5.*(z<10).*(abs(th-pi)<1);
+f = @(th,z) ones(size(th));
+Q0 = f(Th,Z);
+Q0_int = Q0(:,2:end-1);
+q0_int = Q0_int(:);
+
+% -------------------------
+%  Structures for RHS:
+% -------------------------
+diffmat.Dth = Dth;
+diffmat.Dz  = Dz;
+
+geom.th  = th; 
+geom.z   = z;
+geom.Th  = Th;
+geom.Z   = Z;
+geom.r_b = r_b;
+geom.r_t = r_t;
+geom.a   = a;
+geom.L   = L;
+geom.R   = R;
+geom.Rth = Rth;
+geom.Rz  = Rz;
+geom.G   = G;
+
+par.alpha_th = alpha_th;
+par.alpha_z  = alpha_z;
+par.Tc       = Tc;
+par.zp       = zp;
+par.Zp       = @(th,t) Zp(th,t);
+par.ALPHA_th = @(z,L) ALPHA_th(z,L);
+
+% -------------------------
+%  ND RHS handle and solve:
+% -------------------------
+dQdt = @(t, q_int) dqdt_2D_snipsnap(t, q_int, diffmat, geom, par, bcType);
+
+tic
+dtdiff = inf;
+options = odeset('Stats','on','MaxStep',dtdiff);
+[t, q_int] = ode15s(dQdt, t, q0_int, options);
+toc
+
+% -------------------------
+% Expand interior into full:
+% -------------------------
+Q_full = zeros(N_t,Nth*Nz);
+
+% -------------------------
+% One-sided zhat-derivative stencil coefficients from Dz:
+% -------------------------
+b0 = Dz(1,1);       b1 = Dz(1,2);       b2 = Dz(1,3);
+t2 = Dz(end,end-2); t1 = Dz(end,end-1); t0 = Dz(end,end);
+
+for i = 1:N_t
+
+    % Reshape q_int into matrix:
+    Q_int = reshape(q_int(i,:), Nth, Nz-2);
+
+    % Initialize full snapshot and insert interior
+    Q = zeros(Nth, Nz);
+    Q(:,2:Nz-1) = Q_int;
+
+    % Apply BCs based on bcType
+    switch bcType
+        case "NbDt"
+            % Bottom Neumann
+            Cz  = spdiags(par.alpha_z*(Rth(:,1).^2 + R(:,1).^2), 0, Nth, Nth);
+            Cth = spdiags(par.alpha_z*(Rth(:,1).*Rz(:,1)),      0, Nth, Nth);
+            A = b0*Cz - Cth*Dth;
+            b = -Cz*(b1*Q(:,2) + b2*Q(:,3));
+            Q(:,1) = A \ b;
+            % Top Dirichlet
+            Q(:,end) = 1;
+        case "NbNt"
+            % Bottom Neumann
+            Cz  = spdiags(par.alpha_z*(Rth(:,1).^2 + R(:,1).^2), 0, Nth, Nth);
+            Cth = spdiags(par.alpha_z*(Rth(:,1).*Rz(:,1)),      0, Nth, Nth);
+            A = b0*Cz - Cth*Dth;
+            b = -Cz*(b1*Q(:,2) + b2*Q(:,3));
+            Q(:,1) = A \ b;
+            % Top Neumann
+            Cz  = spdiags(par.alpha_z*(Rth(:,Nz).^2 + R(:,Nz).^2), 0, Nth, Nth);
+            Cth = spdiags(par.alpha_z*(Rth(:,Nz).*Rz(:,Nz)),      0, Nth, Nth);
+            A = t0*Cz - Cth*Dth;
+            b = -Cz*(t1*Q(:,end-1) + t2*Q(:,end-2));
+            Q(:,end) = A \ b;
+        case "DbNt"
+            % Bottom Dirichlet
+            Q(:,1) = 1;
+            % Top Neumann (Flux_z = 0): solve Q(:,end)
+            Cz  = spdiags(par.alpha_z*(Rth(:,Nz).^2 + R(:,Nz).^2), 0, Nth, Nth);
+            Cth = spdiags(par.alpha_z*(Rth(:,Nz).*Rz(:,Nz)),      0, Nth, Nth);
+            A = t0*Cz - Cth*Dth;
+            b = -Cz*(t1*Q(:,end-1) + t2*Q(:,end-2));
+            Q(:,end) = A \ b;
+        case "DbDt"
+            % Bottom Dirichlet
+            Q(:,1) = 1;
+            % Top Dirichlet
+            Q(:,end) = 1;
+        otherwise
+            error('bcType must be one of: "NbDt", "NbNt", "DbNt", "DbDt".');
+    end
+    % Save flattened snapshot
+    Q_full(i,:) = Q(:);
+end
+
+% -------------------------
+%  Steady state analysis and crypt metrics:
+% -------------------------
+Q_ss = reshape(Q_full(end,:), Nth, Nz);
+
+[Vth_ss, Vz_ss] = compute_Velocity_Field(Q_ss, diffmat, geom, par, bcType);
+
+[C, P] = compute_Cell_Totals(Q_ss, sqrt(G), th, z, Z < Zp(Th, t(end)), 1);
+
+Total_Cells  = ceil(C)
+Prolif_Cells = ceil(P)
+
+th_0_vec = linspace(th(2), th(end-1), 10);
+z_0      = 1.22;
+Renewal_Time = compute_Renewal_Time(z_0, th_0_vec, Vth_ss, Vz_ss, geom)
+
+% -------------------------
+%  Steady state plot
+% -------------------------
+ex = @(x) [x; x(1,:)];
+while ssp == 1
+
+    fig = figure(1);
+    fig.WindowState = 'maximized';
+    dm = 3;
+
+    Uth = Vth_ss./sqrt(G);
+    Uz  = Vz_ss./sqrt(G);
+
+    figure(1)
+    subplot(1,5,1:3)
+    surf([Th; 2*pi*ones(1,Nz)],ex(Z),ex(Q_ss));
+    hold on
+    quiver3(Th(2:dm:end,2:dm:end-dm),Z(2:dm:end,2:dm:end-dm),Q_ss(2:dm:end,2:dm:end-dm),...
+        Uth(2:dm:end,2:dm:end-dm),Uz(2:dm:end,2:dm:end-dm),zeros(size(Th(2:dm:end,2:dm:end-dm))),...
+        1.0,'color',[0.15 0.15 0.15],'Linewidth',2.5,'MaxHeadSize',.008);
+    plot3([th; 2*pi],Zp([th; 2*pi],t_end),max(max(Q_ss))*ones(Nth+1,1),'w:','linewidth',5)
+    set(gca,'fontsize',42)
+    title('Cell Density and Velocity','fontsize',55,'interpreter','latex')
+    xlabel('$\theta$','fontsize',50,'interpreter','latex')
+    ylabel('$z$','fontsize',50,'interpreter','latex')
+    zlabel('$q_s(\theta,z)$ and $\vec{u}_s(\theta,z)$','fontsize',50,'interpreter','latex')
+    legend('$q_s(\theta,z)$','$\vec{u}_s(\theta,z)$','fontsize',50,'interpreter','latex','location','northeast')
+    grid on
+    grid minor
+    box on
+    colormap turbo
+    shading interp
+    colorbar
+    caxis([1 max(max(Q_ss))])
+    xlim([0 2*pi])
+    ylim([0 L])
+    view([0 0 1])
+
+    Zp_plot = Zp([Th; 2*pi*ones(1,Nz)],t(end));
+
+    subplot(1,5,4:5)
+    surf(ex(R).*cos([Th; 2*pi*ones(1,Nz)]),...
+         ex(R).*sin([Th; 2*pi*ones(1,Nz)]),ex(Z),ex(Q_ss))
+    colormap turbo
+    shading interp
+    lighting gouraud
+    hold on
+    mesh(1.2*ex(R).*cos([Th; 2*pi*ones(1,Nz)]),...
+        1.2*ex(R).*sin([Th; 2*pi*ones(1,Nz)]),Zp_plot,'edgecolor',[.5 .5 .5])
+    set(gca,'fontsize',42)
+    title('Cell Density on Crypt','fontsize',55,'interpreter','latex')
+    xlabel('$x$','fontsize',50,'interpreter','latex')
+    ylabel('$y$','fontsize',50,'interpreter','latex')
+    zlabel('$z$','fontsize',50,'interpreter','latex')
+    legend('$q_s(\theta,z)$','fontsize',50,'interpreter','latex','location','northeast')
+    grid on
+    grid minor
+    box on
+    colorbar
+    xlim([-20 20])
+    ylim([-20 20])
+    zlim([0 80])
+    caxis([1 max(max(Q_full))])
+    text(.725,.8,0,['$\mathcal{C} = $ ' num2str(Total_Cells)],...
+        'fontsize',30,'Units','normalized','interpreter','latex')
+    text(.725,.75,0,['$\mathcal{P} = $ ' num2str(Prolif_Cells)],...
+        'fontsize',30,'Units','normalized','interpreter','latex')
+    text(.725,.7,0,['$\mathcal{R} = $ ' num2str(round(Renewal_Time,2))],...
+        'fontsize',30,'Units','normalized','interpreter','latex')    
+    ssp = 0;
+
+end
+
+
+%% Animation
+close all
+dm = 2;
+dt  = round(.01*N_t);
+fig = figure(2);
+fig.WindowState = 'maximized';
+
+for i = 1:dt:N_t
+
+    Q = reshape(Q_full(i,:), Nth, Nz);
+
+    [Vth, Vz] = velocityField_FVconsistent_2D(Q, diffmat, geom, par, bcType);
+    Uth = Vth ./ sqrt(G);
+    Uz  = Vz ./ sqrt(G);
+
+    figure(2)
+    surf([Th; 2*pi*ones(1,Nz)],ex(Z),ex(Q));
+    hold on
+    quiver3(Th(2:dm:end,2:dm:end-dm),Z(2:dm:end,2:dm:end-dm),Q(2:dm:end,2:dm:end-dm),...
+        Uth(2:dm:end,2:dm:end-dm),Uz(2:dm:end,2:dm:end-dm),zeros(size(Th(2:dm:end,2:dm:end-dm))),...
+        1.0,'color',[0.15 0.15 0.15],'Linewidth',2.5,'MaxHeadSize',.008);
+    plot3([th; 2*pi],Zp([th; 2*pi],t(i)),max(max(Q))*ones(Nth+1,1),'w:','linewidth',5)
+    set(gca,'fontsize',42)
+    title('Cell Density and Velocity','fontsize',55,'interpreter','latex')
+    xlabel('$\theta$','fontsize',50,'interpreter','latex')
+    ylabel('$z$','fontsize',50,'interpreter','latex')
+    zlabel('$q(\theta,z,t)$ and $\vec{u}_s(\theta,z,t)$','fontsize',50,'interpreter','latex')
+    legend('$q(\theta,z,t)$','$\vec{u}(\theta,z,t)$','fontsize',50,'interpreter','latex','location','northwest')
+    grid on
+    grid minor
+    box on
+    colormap turbo
+    shading interp
+    colorbar
+    caxis([1 max(max(Q_ss))])
+    xlim([0 2*pi])
+    ylim([0 L])
+    view([0 0 1])
+    if i == 1
+        pause
+    end
+    hold off
+end
+
+%% Animation Plot on crypt domain
+close all
+dt = round(.01*N_t);
+
+
+X_plot = ex(R).*cos([Th; 2*pi*ones(1,Nz)]);
+Y_plot = ex(R).*sin([Th; 2*pi*ones(1,Nz)]);
+Z_plot = ex(Z);
+fig = figure(3);
+fig.WindowState = 'maximized';
+
+for k = 1:dt:N_t
+
+    Q = reshape(Q_full(k,:),Nth,Nz);
+    Zp_plot = Zp([Th; 2*pi*ones(1,Nz)],t(k));
+
+    Total_Cells  = ceil(trapz(z,trapz(th,Q.*sqrt(G))));
+    Prolif_Cells = ceil(trapz(z,trapz(th,Q.*(Z<Zp(Th,t(k))).*sqrt(G))));
+
+    figure(3)
+    surf(X_plot,Y_plot,Z_plot,ex(Q))
+    colormap turbo
+    shading interp
+    lighting gouraud
+    hold on
+    mesh(X_plot,Y_plot,Zp_plot,'edgecolor',[.5 .5 .5])
+    set(gca,'fontsize',42)
+    title('Cell Density on Crypt','fontsize',55,'interpreter','latex')
+    xlabel('$x$','fontsize',50,'interpreter','latex')
+    ylabel('$y$','fontsize',50,'interpreter','latex')
+    zlabel('$z$','fontsize',50,'interpreter','latex')
+    legend('$q(\theta,z,t)$','fontsize',50,'interpreter','latex')
+    grid on
+    grid minor
+    box on
+    colorbar
+    xlim([-40 40])
+    ylim([-40 40])
+    zlim([0 80])
+    caxis([1 max(max(Q_full))])
+    text(.75,.8,0,['$\mathcal{C} = $ ' num2str(Total_Cells)],...
+        'fontsize',30,'Units','normalized','interpreter','latex')
+    text(.75,.75,0,['$\mathcal{P} = $ ' num2str(Prolif_Cells)],...
+        'fontsize',30,'Units','normalized','interpreter','latex')
+    hold off
+    if k == 1
+        pause
+    end
+
+end
+
+%% Recording Studio
+% Animation
+close all
+
+dm = 3;
+dt  = ceil(.003*N_t);
+
+X_plot = ex(R).*cos([Th; 2*pi*ones(1,Nz)]);
+Y_plot = ex(R).*sin([Th; 2*pi*ones(1,Nz)]);
+Z_plot = ex(Z);
+
+fig = figure(4);
+fig.WindowState = 'maximized';
+% fig.Position;
+drawnow;
+
+v = VideoWriter('Static2D_Sim_10.mp4', 'MPEG-4');
+v.FrameRate = 30;
+open(v);
+
+for i = 1:dt:N_t
+
+    Q = reshape(Q_full(i,:), Nth, Nz);
+    Zp_plot = Zp([Th; 2*pi*ones(1,Nz)],t(i));
+
+    [Vth, Vz] = velocityField_FVconsistent_2D(Q, diffmat, geom, par, bcType);
+    Uth = Vth ./ sqrt(G);
+    Uz  = Vz ./ sqrt(G);
+
+    Total_Cells  = ceil(trapz(z,trapz(th,Q.*sqrt(G))));
+    Prolif_Cells = ceil(trapz(z,trapz(th,Q.*(Z<Zp(Th,t(i))).*sqrt(G))));
+
+    figure(4)
+    subplot(1,2,1)
+    surf([Th; 2*pi*ones(1,Nz)],ex(Z),ex(Q));
+    hold on
+    quiver3(Th(2:dm:end,2:dm:end-dm),Z(2:dm:end,2:dm:end-dm),Q(2:dm:end,2:dm:end-dm),...
+        Uth(2:dm:end,2:dm:end-dm),Uz(2:dm:end,2:dm:end-dm),zeros(size(Th(2:dm:end,2:dm:end-dm))),...
+        1.0,'color',[0.15 0.15 0.15],'Linewidth',2.5,'MaxHeadSize',.008);
+    plot3([th; 2*pi],Zp([th; 2*pi],t(i)),max(max(Q))*ones(Nth+1,1),'w:','linewidth',5)
+    set(gca,'fontsize',42)
+    title('Cell Density and Velocity','fontsize',55,'interpreter','latex')
+    xlabel('$\theta$','fontsize',50,'interpreter','latex')
+    ylabel('$z$','fontsize',50,'interpreter','latex')
+    zlabel('$q(\theta,z,t)$ and $\vec{u}(\theta,z,t)$','fontsize',50,'interpreter','latex')
+    legend('$q(\theta,z,t)$','$\vec{u}(\theta,z,t)$','fontsize',50,'interpreter','latex','location','northwest')
+    grid on
+    grid minor
+    box on
+    colormap turbo
+    shading interp
+    colorbar
+    caxis([1 max(max(Q_full))])
+    xlim([0 2*pi])
+    ylim([0 L])
+    view([0 0 1])
+    hold off
+
+    subplot(1,2,2)
+    surf(X_plot,Y_plot,Z_plot,ex(Q))
+    colormap turbo
+    shading interp
+    lighting gouraud
+    hold on
+    mesh(X_plot,Y_plot,Zp_plot,'edgecolor',[.5 .5 .5])
+    set(gca,'fontsize',42)
+    title('Cell Density on Crypt','fontsize',55,'interpreter','latex')
+    xlabel('$x$','fontsize',50,'interpreter','latex')
+    ylabel('$y$','fontsize',50,'interpreter','latex')
+    zlabel('$z$','fontsize',50,'interpreter','latex')
+    legend('$q(\theta,z,t)$','fontsize',50,'interpreter','latex','location','northwest')
+    grid on
+    grid minor
+    box on
+    colorbar
+    xlim([-40 40])
+    ylim([-40 40])
+    zlim([0 80])
+    caxis([1 max(max(Q_full))])
+    view([1 1 .75])
+    text(.75,.8,0,['$\mathcal{C} = $ ' num2str(Total_Cells)],...
+        'fontsize',30,'Units','normalized','interpreter','latex')
+    text(.75,.75,0,['$\mathcal{P} = $ ' num2str(Prolif_Cells)],...
+        'fontsize',30,'Units','normalized','interpreter','latex')
+    hold off
+
+    drawnow;
+    frame = getframe(fig);
+
+    if mod(size(frame.cdata, 1), 2) ~= 0
+        frame.cdata = frame.cdata(1:end-1, :, :);
+    end
+    if mod(size(frame.cdata, 2), 2) ~= 0
+        frame.cdata = frame.cdata(:, 1:end-1, :);
+    end
+
+    writeVideo(v, frame);
+end
+
+close(v);
+
+%% Solving for Steady-State:
+close all;
+opts = struct('usePrec',true);
+Q_ss_NG = SS_NewtonGMRES_2D(q_int(end,:), t_end, diffmat, geom, par, bcType, opts);
+
+while ssng == 1
+
+    fig = figure(1);
+    fig.WindowState = 'maximized';
+    dm = 2;
+
+    figure(1)
+    subplot(1,2,1)
+    surf([Th; 2*pi*ones(1,Nz)],ex(Z),ex(Q_ss_NG));
+    hold on
+    quiver3(Th(2:dm:end,2:dm:end-dm),Z(2:dm:end,2:dm:end-dm),Q_ss(2:dm:end,2:dm:end-dm),...
+        Vth(2:dm:end,2:dm:end-dm),Vz(2:dm:end,2:dm:end-dm),zeros(size(Th(2:dm:end,2:dm:end-dm))),...
+        1.0,'color',[0.15 0.15 0.15],'Linewidth',2.5,'MaxHeadSize',.008);
+    plot3([th; 2*pi],Zp([th; 2*pi],t_end),max(max(Q_ss))*ones(Nth+1,1),'w:','linewidth',5)
+    set(gca,'fontsize',42)
+    title('Cell Density and Velocity','fontsize',55,'interpreter','latex')
+    xlabel('$\theta$','fontsize',50,'interpreter','latex')
+    ylabel('$z$','fontsize',50,'interpreter','latex')
+    zlabel('$q_s(\theta,z)$ and $\vec{v}_s(\theta,z)$','fontsize',50,'interpreter','latex')
+    legend('$q_s(\theta,z)$','$\vec{v}_s(\theta,z)$','fontsize',50,'interpreter','latex','location','northwest')
+    grid on
+    grid minor
+    box on
+    colormap turbo
+    shading interp
+    colorbar
+    caxis([1 max(max(Q_ss_NG))])
+    xlim([0 2*pi])
+    ylim([0 L])
+    view([0 0 1])
+
+    Zp_plot = Zp([Th; 2*pi*ones(1,Nz)],t(end));
+
+    subplot(1,2,2)
+    surf(ex(R).*cos([Th; 2*pi*ones(1,Nz)]),...
+        ex(R).*sin([Th; 2*pi*ones(1,Nz)]),ex(Z),ex(Q_ss_NG))
+    colormap turbo
+    shading interp
+    lighting gouraud
+    hold on
+    mesh(1.2*ex(R).*cos([Th; 2*pi*ones(1,Nz)]),...
+        1.2*ex(R).*sin([Th; 2*pi*ones(1,Nz)]),Zp_plot,'edgecolor',[.5 .5 .5])
+    set(gca,'fontsize',42)
+    title('Cell Density on Crypt','fontsize',55,'interpreter','latex')
+    xlabel('$x$','fontsize',50,'interpreter','latex')
+    ylabel('$y$','fontsize',50,'interpreter','latex')
+    zlabel('$z$','fontsize',50,'interpreter','latex')
+    legend('$q(\theta,z,t)$','fontsize',50,'interpreter','latex','location','northwest')
+    grid on
+    grid minor
+    box on
+    colorbar
+    xlim([-40 40])
+    ylim([-40 40])
+    zlim([0 80])
+    caxis([1 max(max(Q_ss_NG))])
+    text(.725,.8,0,['$\mathcal{C} = $ ' num2str(Total_Cells)],...
+        'fontsize',30,'Units','normalized','interpreter','latex')
+    text(.725,.75,0,['$\mathcal{P} = $ ' num2str(Prolif_Cells)],...
+        'fontsize',30,'Units','normalized','interpreter','latex')
+    ssng = 0;
+
+end
