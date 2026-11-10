@@ -1,0 +1,334 @@
+%% Analysis of 1D Nondimensional model:
+clear; close all; clc
+
+% Define parameter vectors:
+L         = 79.3515;
+N_g       = 5e0;
+N_z       = 6e0;
+gamma_vec = logspace(-.65,-.25,N_g);
+zp_vec    = linspace(18,30,N_z)/L;
+
+% Define bc type:
+bcType = "NbDt"; 
+
+% Define Mesh:
+[Zp,G] = meshgrid(zp_vec,gamma_vec);
+
+% Preallocate storage matrices:
+C = zeros(N_g,N_z);
+P = zeros(N_g,N_z);
+R = zeros(N_g,N_z);
+
+% For loop
+tic
+for i = 1:N_g
+    for j = 1:N_z
+
+        [C(i,j), P(i,j), R(i,j)] = ND_1D_Function(gamma_vec(i),zp_vec(j),bcType);
+
+    end
+    i
+end
+toc
+
+% save('Analysis_1D_8-6.mat')
+
+%% Surface Plots:
+load('Analysis_1D_8-6.mat')
+
+% Total Cell Contours: 
+MC  = max(max(C))+1; 
+CON = [3000 3100];
+
+C1 = contourc(gamma_vec,zp_vec,C',[CON(1) CON(1)]);
+gc1 = C1(1,2:end); 
+zc1 = C1(2,2:end); 
+
+C2 = contourc(gamma_vec,zp_vec,C',[CON(2) CON(2)]);
+gc2 = C2(1,2:end); 
+zc2 = C2(2,2:end); 
+
+% Total Cells:
+figure(1)
+surf(log10(G),Zp,C)
+hold on
+plot3(log10(gc1),zc1,MC*ones(size(zc1)),'m:','linewidth',5)
+plot3(log10(gc2),zc2,MC*ones(size(zc2)),'m','linewidth',5)
+set(gca,'fontsize',42)
+title('Total Number of Cells','fontsize',55,'interpreter','latex')
+xlabel('$\log_{10}(\gamma)$','fontsize',50,'interpreter','latex')
+ylabel('$\hat{z_p}$','fontsize',50,'interpreter','latex')
+zlabel('$\mathcal{C}$','fontsize',50,'interpreter','latex')
+legend('$\mathcal{C}(\gamma,\hat{z_p})$',['$\mathcal{C} = $ ' num2str(CON(1))],...
+       ['$\mathcal{C} = $ ' num2str(CON(2))],'fontsize',50,'interpreter','latex',...
+       'location','northeast')
+view([0 0 1])
+grid on
+grid minor
+box on
+shading interp
+colormap turbo
+colorbar
+lighting gouraud
+xlim([min(log10(gamma_vec)) max(log10(gamma_vec))])
+ylim([min(zp_vec) max(zp_vec)])
+zlim([min(min(C)) MC])
+
+
+% Proliferative Cell Contours: 
+MP  = max(max(P))+1; 
+CON = [800 1000];
+
+P1 = contourc(gamma_vec,zp_vec,P',[CON(1) CON(1)]);
+gp1 = P1(1,2:end); 
+zp1 = P1(2,2:end); 
+
+P2 = contourc(gamma_vec,zp_vec,P',[CON(2) CON(2)]);
+gp2 = P2(1,2:end); 
+zp2 = P2(2,2:end); 
+
+% Proliferative Cells:
+figure(2)
+surf(log10(G),Zp,P)
+hold on
+plot3(log10(gp1),zp1,MP*ones(size(zp1)),'m:','linewidth',5)
+plot3(log10(gp2),zp2,MP*ones(size(zp2)),'m','linewidth',5)
+set(gca,'fontsize',42)
+title('Total Number of Proliferative Cells','fontsize',55,'interpreter','latex')
+xlabel('$\log_{10}(\gamma)$','fontsize',50,'interpreter','latex')
+ylabel('$\hat{z_p}$','fontsize',50,'interpreter','latex')
+zlabel('$\mathcal{P}$','fontsize',50,'interpreter','latex')
+legend('$\mathcal{P}(\gamma,\hat{z_p})$',['$\mathcal{P} = $ ' num2str(CON(1))],...
+       ['$\mathcal{P} = $ ' num2str(CON(2))],'fontsize',50,'interpreter','latex',...
+       'location','northeast')
+view([0 0 1])
+colorbar 
+grid on
+grid minor
+box on
+shading interp
+colormap turbo
+lighting gouraud
+xlim([min(log10(gamma_vec)) max(log10(gamma_vec))])
+ylim([min(zp_vec) max(zp_vec)])
+zlim([min(min(P)) MP])
+
+
+% Crypt Renewal Contours: 
+MR  = max(max(R))+1; 
+CON = [4.75 5];
+
+R1 = contourc(gamma_vec,zp_vec,R',[CON(1) CON(1)]);
+gr1 = R1(1,2:end); 
+zr1 = R1(2,2:end); 
+
+R2 = contourc(gamma_vec,zp_vec,R',[CON(2) CON(2)]);
+gr2 = R2(1,2:end); 
+zr2 = R2(2,2:end); 
+
+% Crypt Renewal Time
+figure(3)
+surf(log10(G),Zp,R)
+hold on
+plot3(log10(gr1),zr1,MR*ones(size(zr1)),'m:','linewidth',5)
+plot3(log10(gr2),zr2,MR*ones(size(zr2)),'m','linewidth',5)
+set(gca,'fontsize',42)
+title('Crypt Renewal Time','fontsize',55,'interpreter','latex')
+xlabel('$\log_{10}(\gamma)$','fontsize',50,'interpreter','latex')
+ylabel('$\hat{z_p}$','fontsize',50,'interpreter','latex')
+zlabel('$\mathcal{R}$','fontsize',50,'interpreter','latex')
+legend('$\mathcal{R}(\gamma,\hat{z_p})$',['$\mathcal{R} = $ ' num2str(CON(1))],...
+       ['$\mathcal{R} = $ ' num2str(CON(2))],'fontsize',50,'interpreter','latex',...
+       'location','northeast')
+view([0 0 1])
+colorbar 
+grid on
+grid minor
+box on
+shading interp
+colormap turbo
+lighting gouraud
+xlim([min(log10(gamma_vec)) max(log10(gamma_vec))])
+ylim([min(zp_vec) max(zp_vec)])
+zlim([min(min(R)) MR])
+
+% Feasible Region: 
+X1 = [log10(gp1(:)); flipud(log10(gp2(:)))];
+Y1 = [zp1(:); flipud(zp2(:))];
+
+X2 = [log10(gc1(:)); flipud(log10(gc2(:)))];
+Y2 = [zc1(:); flipud(zc2(:))];
+
+X3 = [log10(gr1(:)); flipud(log10(gr2(:)))];
+Y3 = [zr1(:); flipud(zr2(:))];
+
+figure(4)
+plot(log10(gc1),zc1,'k:','linewidth',4)
+hold on
+plot(log10(gc2),zc2,'k','linewidth',4)
+plot(log10(gp1),zp1,'k:','linewidth',4)
+plot(log10(gp2),zp2,'k','linewidth',4)
+plot(log10(gr1),zr1,'k:','linewidth',4)
+plot(log10(gr2),zr2,'k','linewidth',4)
+fill(X1, Y1, 'k', 'FaceAlpha', 0.1); 
+fill(X2, Y2, 'k', 'FaceAlpha', 0.1); 
+fill(X3, Y3, 'k', 'FaceAlpha', 0.1); 
+plot(-.5,.295,'ko','linewidth',5)
+set(gca,'fontsize',42)
+title('Feasible Region','fontsize',55,'interpreter','latex')
+xlabel('$\log_{10}(\gamma)$','fontsize',50,'interpreter','latex')
+ylabel('$\hat{z_p}$','fontsize',50,'interpreter','latex')
+grid on
+grid minor
+xlim([min(log10(gamma_vec)) max(log10(gamma_vec))])
+ylim([min(zp_vec) max(zp_vec)])
+
+%% All four plots on one subplot
+
+% Total Cell Contours: 
+MC  = max(max(C))+1; 
+CON = [3000 3100];
+
+C1 = contourc(gamma_vec,zp_vec,C',[CON(1) CON(1)]);
+gc1 = C1(1,2:end); 
+zc1 = C1(2,2:end); 
+
+C2 = contourc(gamma_vec,zp_vec,C',[CON(2) CON(2)]);
+gc2 = C2(1,2:end); 
+zc2 = C2(2,2:end); 
+
+% Total Cells:
+figure(1)
+subplot(2,2,1)
+surf(log10(G),Zp,C)
+hold on
+plot3(log10(gc1),zc1,MC*ones(size(zc1)),'m:','linewidth',5)
+plot3(log10(gc2),zc2,MC*ones(size(zc2)),'m','linewidth',5)
+set(gca,'fontsize',42)
+title('Total Number of Cells','fontsize',55,'interpreter','latex')
+xlabel('$\log_{10}(\gamma)$','fontsize',50,'interpreter','latex')
+ylabel('$\hat{z_p}$','fontsize',50,'interpreter','latex')
+zlabel('$\mathcal{C}$','fontsize',50,'interpreter','latex')
+legend('$\mathcal{C}(\gamma,\hat{z_p})$',['$\mathcal{C} = $ ' num2str(CON(1))],...
+       ['$\mathcal{C} = $ ' num2str(CON(2))],'fontsize',50,'interpreter','latex',...
+       'location','northeast')
+view([0 0 1])
+grid on
+grid minor
+box on
+shading interp
+colormap turbo
+colorbar
+lighting gouraud
+xlim([min(log10(gamma_vec)) max(log10(gamma_vec))])
+ylim([min(zp_vec) max(zp_vec)])
+zlim([min(min(C)) MC])
+
+% Proliferative Cell Contours: 
+MP  = max(max(P))+1; 
+CON = [800 1000];
+
+P1 = contourc(gamma_vec,zp_vec,P',[CON(1) CON(1)]);
+gp1 = P1(1,2:end); 
+zp1 = P1(2,2:end); 
+
+P2 = contourc(gamma_vec,zp_vec,P',[CON(2) CON(2)]);
+gp2 = P2(1,2:end); 
+zp2 = P2(2,2:end); 
+
+% Proliferative Cells:
+subplot(2,2,2)
+surf(log10(G),Zp,P)
+hold on
+plot3(log10(gp1),zp1,MP*ones(size(zp1)),'m:','linewidth',5)
+plot3(log10(gp2),zp2,MP*ones(size(zp2)),'m','linewidth',5)
+set(gca,'fontsize',42)
+title('Total Number of Proliferative Cells','fontsize',55,'interpreter','latex')
+xlabel('$\log_{10}(\gamma)$','fontsize',50,'interpreter','latex')
+ylabel('$\hat{z_p}$','fontsize',50,'interpreter','latex')
+zlabel('$\mathcal{P}$','fontsize',50,'interpreter','latex')
+legend('$\mathcal{P}(\gamma,\hat{z_p})$',['$\mathcal{P} = $ ' num2str(CON(1))],...
+       ['$\mathcal{P} = $ ' num2str(CON(2))],'fontsize',50,'interpreter','latex',...
+       'location','northeast')
+view([0 0 1])
+colorbar 
+grid on
+grid minor
+box on
+shading interp
+colormap turbo
+lighting gouraud
+xlim([min(log10(gamma_vec)) max(log10(gamma_vec))])
+ylim([min(zp_vec) max(zp_vec)])
+zlim([min(min(P)) MP])
+
+
+% Crypt Renewal Contours: 
+MR  = max(max(R))+1; 
+CON = [4.75 5];
+
+R1 = contourc(gamma_vec,zp_vec,R',[CON(1) CON(1)]);
+gr1 = R1(1,2:end); 
+zr1 = R1(2,2:end); 
+
+R2 = contourc(gamma_vec,zp_vec,R',[CON(2) CON(2)]);
+gr2 = R2(1,2:end); 
+zr2 = R2(2,2:end); 
+
+% Crypt Renewal Time
+subplot(2,2,3)
+surf(log10(G),Zp,R)
+hold on
+plot3(log10(gr1),zr1,MR*ones(size(zr1)),'m:','linewidth',5)
+plot3(log10(gr2),zr2,MR*ones(size(zr2)),'m','linewidth',5)
+set(gca,'fontsize',42)
+title('Crypt Renewal Time','fontsize',55,'interpreter','latex')
+xlabel('$\log_{10}(\gamma)$','fontsize',50,'interpreter','latex')
+ylabel('$\hat{z_p}$','fontsize',50,'interpreter','latex')
+zlabel('$\mathcal{R}$','fontsize',50,'interpreter','latex')
+legend('$\mathcal{R}(\gamma,\hat{z_p})$',['$\mathcal{R} = $ ' num2str(CON(1))],...
+       ['$\mathcal{R} = $ ' num2str(CON(2))],'fontsize',50,'interpreter','latex',...
+       'location','northeast')
+view([0 0 1])
+colorbar 
+grid on
+grid minor
+box on
+shading interp
+colormap turbo
+lighting gouraud
+xlim([min(log10(gamma_vec)) max(log10(gamma_vec))])
+ylim([min(zp_vec) max(zp_vec)])
+zlim([min(min(R)) MR])
+
+% Feasible Region: 
+X1 = [log10(gp1(:)); flipud(log10(gp2(:)))];
+Y1 = [zp1(:); flipud(zp2(:))];
+
+X2 = [log10(gc1(:)); flipud(log10(gc2(:)))];
+Y2 = [zc1(:); flipud(zc2(:))];
+
+X3 = [log10(gr1(:)); flipud(log10(gr2(:)))];
+Y3 = [zr1(:); flipud(zr2(:))];
+
+subplot(2,2,4)
+plot(log10(gc1),zc1,'k:','linewidth',4)
+hold on
+plot(log10(gc2),zc2,'k','linewidth',4)
+plot(log10(gp1),zp1,'k:','linewidth',4)
+plot(log10(gp2),zp2,'k','linewidth',4)
+plot(log10(gr1),zr1,'k:','linewidth',4)
+plot(log10(gr2),zr2,'k','linewidth',4)
+fill(X1, Y1, 'k', 'FaceAlpha', 0.1); 
+fill(X2, Y2, 'k', 'FaceAlpha', 0.1); 
+fill(X3, Y3, 'k', 'FaceAlpha', 0.1); 
+plot(-.5,.295,'ko','linewidth',5)
+set(gca,'fontsize',42)
+title('Feasible Region','fontsize',55,'interpreter','latex')
+xlabel('$\log_{10}(\gamma)$','fontsize',50,'interpreter','latex')
+ylabel('$\hat{z_p}$','fontsize',50,'interpreter','latex')
+grid on
+grid minor
+xlim([min(log10(gamma_vec)) max(log10(gamma_vec))])
+ylim([min(zp_vec) max(zp_vec)])
+
