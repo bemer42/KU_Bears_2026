@@ -4,8 +4,8 @@ close all; clear; clc; ssp = 1;
 % Grid/Time Points:
 N_t   = 1e3;
 t_end = 5e2;
-Nz    = 3e1;
-Nth   = 3e1;
+Nz    = 2e1;
+Nth   = 2e1;
 
 % Predefine structures:
 geom    = struct();

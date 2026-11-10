@@ -141,8 +141,8 @@ divFz(:,2:Nz-1) = (Flux_z_face(:,2:Nz-1) - Flux_z_face(:,1:Nz-2)) ./ (dzc(2:Nz-1
 % Proliferation term
 th0 = 3*pi/2;  w = 0.5;  epsTh = 0.05;
 Wth = 0.5*(1 - tanh((abs(Th-th0)-w)/epsTh));  
-% P   = log(2)/Tc * Q .* (Z<(zp+8*cos(2*Th)-8));
-P   = log(2)/Tc * Q .* (Z<zp);
+P   = log(2)/Tc * Q .* (Z<(zp+8*cos(2*Th)-8));
+% P   = log(2)/Tc * Q .* (Z<zp);
 
 % Dynamic q PDE 
 dQdt_full = (1 ./ G) .* (Dth*Flux_th) + (1 ./ G) .* divFz + P - Gt_over_G .* Q;

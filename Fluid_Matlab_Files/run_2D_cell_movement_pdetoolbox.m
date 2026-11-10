@@ -1,4 +1,4 @@
-function run_2D_cell_movement_pdetoolbox()
+function results = run_2D_cell_movement_pdetoolbox()
 % 1. Create a 2D PDE Model container
 model = createpde();
 

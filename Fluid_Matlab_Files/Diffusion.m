@@ -22,14 +22,11 @@ Dxx(1,2) = 2;
 Dxx(end, end-1) = 2;
 Dxx = k*Dxx/dx^2;
 
-
-
 % Initial Condition
 f = @(x) cos(x*2*pi) + 1;
 U0 = f(x);
 
 % Define the Right hand side:
-
 dUdt = @(t,U) Dxx * U;
 
 % Solve the heat equation:
@@ -41,14 +38,14 @@ toc
 
 % Animation:
 
-for i = 1: N_t
+for i = 1: N_t 
 
     figure(1)
     plot(x,U(i,:), 'k', 'LineWidth',3); hold off;
     if i ==1
         pause
-    else
-        drawnow
+%     else
+%         drawnow
     end
     
     grid on
@@ -56,5 +53,8 @@ for i = 1: N_t
     ylim([0,2])
 
 end
+
+
+% Surface: 
 
 
